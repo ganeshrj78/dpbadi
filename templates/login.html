@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Login - BP Badminton{% endblock %}
+
+{% block content %}
+<div class="min-h-[85vh] flex items-center justify-center">
+    <div class="w-full max-w-md">
+        <!-- Logo and Title -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-24 h-24 gradient-primary rounded-full shadow-xl mb-4 border-4 border-wimbledon-gold">
+                <!-- Badminton shuttlecock icon -->
+                <svg class="w-14 h-14 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm2 14h-4v-1h4v1zm1.31-4.41L14 12.55V14h-4v-1.45l-1.31-.96C7.66 10.86 7 9.98 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 .98-.66 1.86-1.69 2.59z"/>
+                </svg>
+            </div>
+            <h1 class="text-4xl font-serif font-bold text-wimbledon-purple">
+                BP Badminton
+            </h1>
+            <p class="text-wimbledon-gold font-serif text-lg mt-1 tracking-widest uppercase">The Championships</p>
+            <p class="text-gray-500 mt-3">Court Reservation & Payment Tracker</p>
+        </div>
+
+        <!-- Login Card -->
+        <div class="bg-white/90 backdrop-blur-lg rounded-2xl shadow-xl p-8 border border-wimbledon-gold/30">
+            <form method="POST" class="space-y-6">
+                <div>
+                    <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">Enter Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <svg class="w-5 h-5 text-wimbledon-purple/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                            </svg>
+                        </div>
+                        <input type="password" name="password" id="password" required
+                            class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all"
+                            placeholder="Enter your password">
+                    </div>
+                </div>
+                <button type="submit"
+                    class="w-full btn-success text-white py-3 px-4 rounded-xl font-semibold shadow-lg border border-wimbledon-gold/30">
+                    <span class="flex items-center justify-center space-x-2">
+                        <span>Sign In</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                        </svg>
+                    </span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Footer text -->
+        <p class="text-center text-wimbledon-purple/50 text-sm mt-6 font-serif">
+            Secure access for authorized members only
+        </p>
+    </div>
+</div>
+{% endblock %}

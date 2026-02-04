@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Players - BP Badminton{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+    <div>
+        <h1 class="text-4xl font-serif font-bold text-wimbledon-purple">Players</h1>
+        <p class="text-gray-500 mt-1">Manage your club members</p>
+    </div>
+    <a href="{{ url_for('add_player') }}" class="btn-primary text-white px-6 py-3 rounded-xl font-semibold shadow-lg inline-flex items-center space-x-2 border border-wimbledon-gold/30">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+        <span>Add Player</span>
+    </a>
+</div>
+
+<!-- Search Bar -->
+<div class="mb-6">
+    <form method="GET" action="{{ url_for('players') }}" class="flex gap-4">
+        <input type="hidden" name="category" value="{{ current_category }}">
+        <div class="flex-1 relative">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-wimbledon-purple/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
+            <input type="text" name="search" value="{{ search_query }}" placeholder="Search players by name, phone, or email..."
+                class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl shadow-sm focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all bg-white">
+        </div>
+        <button type="submit" class="btn-success text-white px-6 py-3 rounded-xl font-semibold shadow-lg">
+            Search
+        </button>
+        {% if search_query %}
+        <a href="{{ url_for('players', category=current_category) }}" class="px-6 py-3 border-2 border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 font-medium transition-all">
+            Clear
+        </a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Category Tabs -->
+<div class="mb-6">
+    <div class="bg-white rounded-xl shadow-sm p-1.5 inline-flex space-x-1 border border-wimbledon-gold/20">
+        <a href="{{ url_for('players', category='all', search=search_query) if search_query else url_for('players', category='all') }}"
+            class="px-5 py-2.5 rounded-lg font-medium text-sm transition-all {% if current_category == 'all' %}gradient-primary text-white shadow-md{% else %}text-gray-600 hover:bg-wimbledon-cream{% endif %}">
+            All Players
+        </a>
+        <a href="{{ url_for('players', category='regular', search=search_query) if search_query else url_for('players', category='regular') }}"
+            class="px-5 py-2.5 rounded-lg font-medium text-sm transition-all {% if current_category == 'regular' %}gradient-success text-white shadow-md{% else %}text-gray-600 hover:bg-wimbledon-cream{% endif %}">
+            Regular
+        </a>
+        <a href="{{ url_for('players', category='adhoc', search=search_query) if search_query else url_for('players', category='adhoc') }}"
+            class="px-5 py-2.5 rounded-lg font-medium text-sm transition-all {% if current_category == 'adhoc' %}gradient-primary text-white shadow-md{% else %}text-gray-600 hover:bg-wimbledon-cream{% endif %}">
+            Ad-hoc
+        </a>
+        <a href="{{ url_for('players', category='kid', search=search_query) if search_query else url_for('players', category='kid') }}"
+            class="px-5 py-2.5 rounded-lg font-medium text-sm transition-all {% if current_category == 'kid' %}gradient-gold text-wimbledon-purple-dark shadow-md{% else %}text-gray-600 hover:bg-wimbledon-cream{% endif %}">
+            Kids
+        </a>
+    </div>
+</div>
+
+<!-- Players Table -->
+<div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="min-w-full">
+            <thead>
+                <tr class="bg-gradient-to-r from-wimbledon-cream to-white border-b border-wimbledon-gold/20">
+                    <th class="px-6 py-4 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Player</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Category</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Contact</th>
+                    <th class="px-6 py-4 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Charges</th>
+                    <th class="px-6 py-4 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Paid</th>
+                    <th class="px-6 py-4 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Balance</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-wimbledon-gold/10">
+                {% for player in players %}
+                <tr class="table-row-hover cursor-pointer transition-all" onclick="window.location='{{ url_for('player_detail', id=player.id) }}'">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 gradient-primary rounded-full flex items-center justify-center text-white font-bold shadow-md border border-wimbledon-gold/30">
+                                {{ player.name[0].upper() }}
+                            </div>
+                            <div class="font-semibold text-gray-800">{{ player.name }}</div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-3 py-1.5 inline-flex text-xs leading-5 font-bold rounded-full shadow-sm
+                            {% if player.category == 'regular' %}gradient-success text-white
+                            {% elif player.category == 'adhoc' %}gradient-primary text-white
+                            {% else %}gradient-gold text-wimbledon-purple-dark{% endif %}">
+                            {{ player.category }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-600">
+                            {% if player.phone %}
+                            <div class="flex items-center space-x-1">
+                                <svg class="w-4 h-4 text-wimbledon-purple/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+                                <span>{{ player.phone }}</span>
+                            </div>
+                            {% endif %}
+                            {% if player.email %}
+                            <div class="flex items-center space-x-1 mt-1">
+                                <svg class="w-4 h-4 text-wimbledon-purple/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                <span>{{ player.email }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 text-right font-medium">
+                        ${{ "%.2f"|format(player.get_total_charges()) }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-wimbledon-green text-right font-semibold">
+                        ${{ "%.2f"|format(player.get_total_payments()) }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right">
+                        <span class="px-3 py-1.5 rounded-full text-sm font-bold
+                            {% if player.get_balance() > 0 %}bg-wimbledon-purple/10 text-wimbledon-purple{% else %}bg-wimbledon-green/10 text-wimbledon-green{% endif %}">
+                            ${{ "%.2f"|format(player.get_balance()) }}
+                        </span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="px-6 py-12 text-center">
+                        <svg class="w-16 h-16 mx-auto text-wimbledon-purple/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                        <p class="text-gray-500 font-medium">No players found</p>
+                        <p class="text-gray-400 text-sm mt-1">Try adjusting your search or filter</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

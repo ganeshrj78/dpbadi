@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Sessions - BP Badminton{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+    <div>
+        <h1 class="text-4xl font-serif font-bold text-wimbledon-purple">Sessions</h1>
+        <p class="text-gray-500 mt-1">Track court bookings and attendance</p>
+    </div>
+    <a href="{{ url_for('add_session') }}" class="btn-success text-white px-6 py-3 rounded-xl font-semibold shadow-lg inline-flex items-center space-x-2 border border-wimbledon-gold/30">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+        <span>New Session</span>
+    </a>
+</div>
+
+<!-- Sessions Grid -->
+<div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="min-w-full">
+            <thead>
+                <tr class="bg-gradient-to-r from-wimbledon-cream to-white border-b border-wimbledon-gold/20">
+                    <th class="px-6 py-4 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Date</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Time</th>
+                    <th class="px-6 py-4 text-center text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Courts</th>
+                    <th class="px-6 py-4 text-center text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Players</th>
+                    <th class="px-6 py-4 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Total Cost</th>
+                    <th class="px-6 py-4 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Per Player</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-wimbledon-gold/10">
+                {% for session in sessions %}
+                <tr class="table-row-hover cursor-pointer transition-all" onclick="window.location='{{ url_for('session_detail', id=session.id) }}'">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-14 h-14 bg-gradient-to-br from-wimbledon-purple/10 to-wimbledon-green/10 rounded-xl flex flex-col items-center justify-center shadow-sm border border-wimbledon-gold/30">
+                                <span class="text-lg font-bold text-wimbledon-purple">{{ session.date.strftime('%d') }}</span>
+                                <span class="text-xs text-wimbledon-green uppercase">{{ session.date.strftime('%b') }}</span>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-gray-800">{{ session.date.strftime('%A') }}</div>
+                                <div class="text-sm text-gray-500">{{ session.date.strftime('%Y') }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-5 h-5 text-wimbledon-purple/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span class="text-gray-600">{{ session.start_time }} - {{ session.end_time }}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <span class="px-4 py-2 bg-wimbledon-purple/10 text-wimbledon-purple rounded-full text-sm font-bold border border-wimbledon-purple/20">
+                            {{ session.courts }} court{% if session.courts > 1 %}s{% endif %}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <span class="px-4 py-2 bg-wimbledon-green/10 text-wimbledon-green rounded-full text-sm font-bold border border-wimbledon-green/20">
+                            {{ session.get_attendee_count() }} player{% if session.get_attendee_count() != 1 %}s{% endif %}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right">
+                        <span class="text-gray-800 font-semibold">${{ "%.2f"|format(session.get_total_cost()) }}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right">
+                        <span class="px-3 py-1.5 gradient-gold text-wimbledon-purple-dark rounded-full text-sm font-bold shadow-md">
+                            ${{ "%.2f"|format(session.get_cost_per_player()) }}
+                        </span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="px-6 py-12 text-center">
+                        <svg class="w-16 h-16 mx-auto text-wimbledon-purple/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <p class="text-gray-500 font-medium">No sessions found</p>
+                        <p class="text-gray-400 text-sm mt-1">Create your first session to get started</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

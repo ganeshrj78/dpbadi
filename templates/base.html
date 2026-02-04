@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BP Badminton{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        serif: ['Playfair Display', 'Georgia', 'serif'],
+                        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                    },
+                    colors: {
+                        wimbledon: {
+                            purple: '#44005C',
+                            'purple-light': '#5C0080',
+                            'purple-dark': '#2D003D',
+                            green: '#006633',
+                            'green-light': '#008844',
+                            'green-dark': '#004422',
+                            gold: '#C4A14A',
+                            'gold-light': '#D4B85A',
+                            cream: '#FAF8F5',
+                            'cream-dark': '#F5F0E8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+
+        /* Wimbledon-inspired gradient backgrounds */
+        .gradient-primary { background: linear-gradient(135deg, #44005C 0%, #5C0080 100%); }
+        .gradient-success { background: linear-gradient(135deg, #004422 0%, #006633 100%); }
+        .gradient-warning { background: linear-gradient(135deg, #44005C 0%, #6B0099 100%); }
+        .gradient-info { background: linear-gradient(135deg, #006633 0%, #008844 100%); }
+        .gradient-dark { background: linear-gradient(135deg, #2D003D 0%, #44005C 100%); }
+        .gradient-gold { background: linear-gradient(135deg, #C4A14A 0%, #D4B85A 100%); }
+
+        /* Glass morphism effect with cream tint */
+        .glass {
+            background: rgba(250, 248, 245, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        /* Smooth transitions */
+        .transition-all { transition: all 0.3s ease; }
+
+        /* Card hover effect with refined shadow */
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(68, 0, 92, 0.1), 0 10px 10px -5px rgba(0, 102, 51, 0.04);
+        }
+
+        /* Animated gradient border - Wimbledon colors */
+        .gradient-border {
+            position: relative;
+            background: linear-gradient(white, white) padding-box,
+                        linear-gradient(135deg, #44005C, #006633) border-box;
+            border: 2px solid transparent;
+        }
+
+        /* Elegant gold border for premium feel */
+        .gold-border {
+            border: 1px solid #C4A14A;
+        }
+
+        /* Pulse animation */
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .pulse-soft { animation: pulse-soft 2s infinite; }
+
+        /* Table row hover - Wimbledon style */
+        .table-row-hover:hover {
+            background: linear-gradient(90deg, rgba(68, 0, 92, 0.03) 0%, rgba(0, 102, 51, 0.03) 100%);
+        }
+
+        /* Button styles - Wimbledon Purple */
+        .btn-primary {
+            background: linear-gradient(135deg, #44005C 0%, #5C0080 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(68, 0, 92, 0.4);
+        }
+
+        /* Button styles - Championship Green */
+        .btn-success {
+            background: linear-gradient(135deg, #004422 0%, #006633 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(0, 102, 51, 0.4);
+        }
+
+        /* Button styles - Gold accent */
+        .btn-gold {
+            background: linear-gradient(135deg, #C4A14A 0%, #D4B85A 100%);
+            color: #2D003D;
+            transition: all 0.3s ease;
+        }
+        .btn-gold:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(196, 161, 74, 0.4);
+        }
+
+        /* Scrollbar styling - Wimbledon */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #FAF8F5; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #44005C 0%, #006633 100%); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #44005C; }
+
+        /* Elegant headings */
+        h1, h2, h3 { font-family: 'Playfair Display', Georgia, serif; }
+
+        /* Subtle texture overlay for premium feel */
+        .premium-bg {
+            position: relative;
+        }
+        .premium-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2344005C' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-wimbledon-cream via-white to-wimbledon-cream-dark min-h-screen font-sans premium-bg">
+    {% if session.authenticated %}
+    <!-- Wimbledon-Style Navbar with Mobile Toggle -->
+    <nav class="gradient-primary text-white shadow-xl sticky top-0 z-50 border-b-2 border-wimbledon-gold" x-data="{ mobileMenuOpen: false }">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center space-x-4 md:space-x-8">
+                    <a href="{{ url_for('dashboard') }}" class="flex items-center space-x-2 md:space-x-3">
+                        <div class="w-9 h-9 md:w-10 md:h-10 bg-wimbledon-gold rounded-full flex items-center justify-center shadow-lg flex-shrink-0">
+                            <!-- Shuttlecock/Badminton icon -->
+                            <svg class="w-5 h-5 md:w-6 md:h-6 text-wimbledon-purple-dark" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm2 14h-4v-1h4v1zm1.31-4.41L14 12.55V14h-4v-1.45l-1.31-.96C7.66 10.86 7 9.98 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 .98-.66 1.86-1.69 2.59z"/>
+                            </svg>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-lg md:text-xl font-serif font-bold tracking-wide">BP Badminton</span>
+                            <span class="text-[10px] md:text-xs text-wimbledon-gold opacity-90 -mt-1 tracking-widest uppercase hidden sm:block">The Championships</span>
+                        </div>
+                    </a>
+                    <div class="hidden md:flex space-x-1">
+                        <a href="{{ url_for('dashboard') }}" class="px-4 py-2 rounded-lg font-medium transition-all {% if request.endpoint == 'dashboard' %}bg-wimbledon-green shadow-md{% else %}hover:bg-white/10{% endif %}">
+                            <span class="flex items-center space-x-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                                <span>Dashboard</span>
+                            </span>
+                        </a>
+                        <a href="{{ url_for('players') }}" class="px-4 py-2 rounded-lg font-medium transition-all {% if 'player' in request.endpoint %}bg-wimbledon-green shadow-md{% else %}hover:bg-white/10{% endif %}">
+                            <span class="flex items-center space-x-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                <span>Players</span>
+                            </span>
+                        </a>
+                        <a href="{{ url_for('sessions') }}" class="px-4 py-2 rounded-lg font-medium transition-all {% if 'session' in request.endpoint %}bg-wimbledon-green shadow-md{% else %}hover:bg-white/10{% endif %}">
+                            <span class="flex items-center space-x-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                <span>Sessions</span>
+                            </span>
+                        </a>
+                        <a href="{{ url_for('payments') }}" class="px-4 py-2 rounded-lg font-medium transition-all {% if 'payment' in request.endpoint %}bg-wimbledon-green shadow-md{% else %}hover:bg-white/10{% endif %}">
+                            <span class="flex items-center space-x-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span>Payments</span>
+                            </span>
+                        </a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <!-- Desktop Logout -->
+                    <a href="{{ url_for('logout') }}" class="hidden sm:flex items-center space-x-2 px-3 md:px-4 py-2 rounded-lg hover:bg-white/10 transition-all border border-wimbledon-gold/30 hover:border-wimbledon-gold">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        <span>Logout</span>
+                    </a>
+                    <!-- Mobile Menu Button -->
+                    <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden p-2 rounded-lg hover:bg-white/10 transition-all">
+                        <svg x-show="!mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                        <svg x-show="mobileMenuOpen" x-cloak class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <!-- Mobile menu (toggleable) -->
+            <div x-show="mobileMenuOpen" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 -translate-y-2" class="md:hidden pb-4 space-y-1 border-t border-wimbledon-gold/20 pt-3 mt-2">
+                <a href="{{ url_for('dashboard') }}" class="flex items-center space-x-3 px-4 py-3 rounded-lg {% if request.endpoint == 'dashboard' %}bg-wimbledon-green{% else %}hover:bg-wimbledon-green/50{% endif %} transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('players') }}" class="flex items-center space-x-3 px-4 py-3 rounded-lg {% if 'player' in request.endpoint %}bg-wimbledon-green{% else %}hover:bg-wimbledon-green/50{% endif %} transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    <span>Players</span>
+                </a>
+                <a href="{{ url_for('sessions') }}" class="flex items-center space-x-3 px-4 py-3 rounded-lg {% if 'session' in request.endpoint %}bg-wimbledon-green{% else %}hover:bg-wimbledon-green/50{% endif %} transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <span>Sessions</span>
+                </a>
+                <a href="{{ url_for('payments') }}" class="flex items-center space-x-3 px-4 py-3 rounded-lg {% if 'payment' in request.endpoint %}bg-wimbledon-green{% else %}hover:bg-wimbledon-green/50{% endif %} transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span>Payments</span>
+                </a>
+                <div class="border-t border-wimbledon-gold/20 pt-3 mt-3">
+                    <a href="{{ url_for('logout') }}" class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-all text-wimbledon-gold">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="mb-6 p-4 rounded-xl shadow-lg flex items-center space-x-3 border {% if category == 'error' %}bg-gradient-to-r from-wimbledon-purple to-wimbledon-purple-light text-white border-wimbledon-gold/30{% else %}bg-gradient-to-r from-wimbledon-green-dark to-wimbledon-green text-white border-wimbledon-gold/30{% endif %}">
+                        {% if category == 'error' %}
+                        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        {% else %}
+                        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        {% endif %}
+                        <span class="font-medium">{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    {% if session.authenticated %}
+    <footer class="mt-auto py-6 text-center text-sm border-t border-wimbledon-gold/20">
+        <p class="text-wimbledon-purple/60 font-serif">BP Badminton &middot; The Championships</p>
+    </footer>
+    {% endif %}
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
