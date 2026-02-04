@@ -23,13 +23,26 @@ def login_required(f):
     return decorated_function
 
 
-# Admin-only decorator
+# Admin-only decorator (allows both master admin and player admins)
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('authenticated'):
             return redirect(url_for('login'))
-        if session.get('user_type') != 'admin':
+        if session.get('user_type') not in ['admin', 'player_admin']:
+            flash('Admin access required', 'error')
+            return redirect(url_for('player_profile'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+# Master admin only decorator (for sensitive operations like promoting admins)
+def master_admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('authenticated'):
+            return redirect(url_for('login'))
+        if session.get('user_type') not in ['admin', 'player_admin']:
             flash('Admin access required', 'error')
             return redirect(url_for('player_profile'))
         return f(*args, **kwargs)
@@ -57,10 +70,15 @@ def login():
             player = Player.query.filter(db.func.lower(Player.email) == email).first()
             if player and player.check_password(password):
                 session['authenticated'] = True
-                session['user_type'] = 'player'
                 session['player_id'] = player.id
-                flash(f'Welcome back, {player.name}!', 'success')
-                return redirect(url_for('player_profile'))
+                if player.is_admin:
+                    session['user_type'] = 'player_admin'
+                    flash(f'Welcome back, {player.name}! (Admin)', 'success')
+                    return redirect(url_for('dashboard'))
+                else:
+                    session['user_type'] = 'player'
+                    flash(f'Welcome back, {player.name}!', 'success')
+                    return redirect(url_for('player_profile'))
             flash('Invalid email or password', 'error')
 
     return render_template('login.html')
@@ -79,9 +97,10 @@ def logout():
 @app.route('/')
 @login_required
 def dashboard():
-    # Redirect players to their profile
+    # Redirect non-admin players to their profile
     if session.get('user_type') == 'player':
         return redirect(url_for('player_profile'))
+    # Admin and player_admin can access dashboard
 
     total_players = Player.query.count()
     upcoming_sessions = Session.query.filter(Session.date >= date.today()).count()
@@ -335,6 +354,37 @@ def delete_player(id):
     db.session.commit()
     flash(f'Player {name} deleted successfully!', 'success')
     return redirect(url_for('players'))
+
+
+@app.route('/players/<int:id>/toggle-admin', methods=['POST'])
+@admin_required
+def toggle_admin(id):
+    player = Player.query.get_or_404(id)
+    player.is_admin = not player.is_admin
+    db.session.commit()
+    status = 'promoted to admin' if player.is_admin else 'removed from admin'
+    flash(f'{player.name} has been {status}!', 'success')
+    return redirect(url_for('player_detail', id=id))
+
+
+@app.route('/api/players/<int:id>/category', methods=['POST'])
+@admin_required
+def update_player_category(id):
+    player = Player.query.get_or_404(id)
+    data = request.get_json()
+    category = data.get('category')
+
+    if category not in ['regular', 'adhoc', 'kid']:
+        return jsonify({'error': 'Invalid category'}), 400
+
+    player.category = category
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'player_id': player.id,
+        'category': player.category
+    })
 
 
 # Session routes

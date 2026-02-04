@@ -14,6 +14,7 @@ class Player(db.Model):
     email = db.Column(db.String(100))
     password_hash = db.Column(db.String(255))
     zelle_preference = db.Column(db.String(10), default='email')  # 'email' or 'phone'
+    is_admin = db.Column(db.Boolean, default=False)  # Player admin flag
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     attendances = db.relationship('Attendance', backref='player', lazy='dynamic', cascade='all, delete-orphan')

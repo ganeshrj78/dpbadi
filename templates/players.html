@@ -61,81 +61,92 @@
     </div>
 </div>
 
-<!-- Players Table -->
-<div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 overflow-hidden">
-    <div class="overflow-x-auto">
-        <table class="min-w-full">
-            <thead>
-                <tr class="bg-gradient-to-r from-wimbledon-cream to-white border-b border-wimbledon-gold/20">
-                    <th class="px-6 py-4 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Player</th>
-                    <th class="px-6 py-4 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Category</th>
-                    <th class="px-6 py-4 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Contact</th>
-                    <th class="px-6 py-4 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Charges</th>
-                    <th class="px-6 py-4 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Paid</th>
-                    <th class="px-6 py-4 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Balance</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-wimbledon-gold/10">
-                {% for player in players %}
-                <tr class="table-row-hover cursor-pointer transition-all" onclick="window.location='{{ url_for('player_detail', id=player.id) }}'">
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 gradient-primary rounded-full flex items-center justify-center text-white font-bold shadow-md border border-wimbledon-gold/30">
-                                {{ player.name[0].upper() }}
-                            </div>
-                            <div class="font-semibold text-gray-800">{{ player.name }}</div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-3 py-1.5 inline-flex text-xs leading-5 font-bold rounded-full shadow-sm
-                            {% if player.category == 'regular' %}gradient-success text-white
-                            {% elif player.category == 'adhoc' %}gradient-primary text-white
-                            {% else %}gradient-gold text-wimbledon-purple-dark{% endif %}">
-                            {{ player.category }}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-600">
-                            {% if player.phone %}
-                            <div class="flex items-center space-x-1">
-                                <svg class="w-4 h-4 text-wimbledon-purple/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
-                                <span>{{ player.phone }}</span>
-                            </div>
-                            {% endif %}
-                            {% if player.email %}
-                            <div class="flex items-center space-x-1 mt-1">
-                                <svg class="w-4 h-4 text-wimbledon-purple/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                                <span>{{ player.email }}</span>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 text-right font-medium">
-                        ${{ "%.2f"|format(player.get_total_charges()) }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-wimbledon-green text-right font-semibold">
-                        ${{ "%.2f"|format(player.get_total_payments()) }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right">
-                        <span class="px-3 py-1.5 rounded-full text-sm font-bold
-                            {% if player.get_balance() > 0 %}bg-wimbledon-purple/10 text-wimbledon-purple{% else %}bg-wimbledon-green/10 text-wimbledon-green{% endif %}">
-                            ${{ "%.2f"|format(player.get_balance()) }}
-                        </span>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="6" class="px-6 py-12 text-center">
-                        <svg class="w-16 h-16 mx-auto text-wimbledon-purple/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                        </svg>
-                        <p class="text-gray-500 font-medium">No players found</p>
-                        <p class="text-gray-400 text-sm mt-1">Try adjusting your search or filter</p>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+{% if current_category == 'all' and not search_query %}
+<!-- Grouped View -->
+{% set regular_players = players|selectattr('category', 'equalto', 'regular')|list %}
+{% set adhoc_players = players|selectattr('category', 'equalto', 'adhoc')|list %}
+{% set kid_players = players|selectattr('category', 'equalto', 'kid')|list %}
+
+<!-- Regular Players -->
+{% if regular_players %}
+<div class="mb-8">
+    <div class="flex items-center gap-3 mb-4">
+        <span class="px-4 py-2 gradient-success text-white text-sm font-bold rounded-full shadow-sm">Regular</span>
+        <span class="text-gray-500 text-sm">{{ regular_players|length }} players</span>
     </div>
+    {% with player_list = regular_players %}
+    {% include "partials/player_table.html" %}
+    {% endwith %}
 </div>
+{% endif %}
+
+<!-- Ad-hoc Players -->
+{% if adhoc_players %}
+<div class="mb-8">
+    <div class="flex items-center gap-3 mb-4">
+        <span class="px-4 py-2 gradient-primary text-white text-sm font-bold rounded-full shadow-sm">Ad-hoc</span>
+        <span class="text-gray-500 text-sm">{{ adhoc_players|length }} players</span>
+    </div>
+    {% with player_list = adhoc_players %}
+    {% include "partials/player_table.html" %}
+    {% endwith %}
+</div>
+{% endif %}
+
+<!-- Kid Players -->
+{% if kid_players %}
+<div class="mb-8">
+    <div class="flex items-center gap-3 mb-4">
+        <span class="px-4 py-2 gradient-gold text-wimbledon-purple-dark text-sm font-bold rounded-full shadow-sm">Kids</span>
+        <span class="text-gray-500 text-sm">{{ kid_players|length }} players</span>
+    </div>
+    {% with player_list = kid_players %}
+    {% include "partials/player_table.html" %}
+    {% endwith %}
+</div>
+{% endif %}
+
+{% if not regular_players and not adhoc_players and not kid_players %}
+<div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 p-12 text-center">
+    <svg class="w-16 h-16 mx-auto text-wimbledon-purple/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+    </svg>
+    <p class="text-gray-500 font-medium">No players found</p>
+</div>
+{% endif %}
+
+{% else %}
+<!-- Flat View (filtered or searching) -->
+{% with player_list = players %}
+{% include "partials/player_table.html" %}
+{% endwith %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function updateCategory(playerId, category) {
+    try {
+        const response = await fetch(`/api/players/${playerId}/category`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ category: category })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Reload page to reflect changes in grouping
+            location.reload();
+        } else {
+            alert('Failed to update category');
+        }
+    } catch (error) {
+        console.error('Error updating category:', error);
+        alert('Failed to update category. Please try again.');
+    }
+}
+</script>
 {% endblock %}
