@@ -151,6 +151,96 @@ def player_profile():
     return render_template('player_profile.html', player=player, attendances=attendances, payments=payments)
 
 
+# Player sessions view - see all sessions and vote
+@app.route('/player/sessions')
+@login_required
+def player_sessions():
+    if session.get('user_type') != 'player':
+        return redirect(url_for('sessions'))
+
+    player_id = session.get('player_id')
+    player = Player.query.get_or_404(player_id)
+
+    # Get upcoming sessions
+    upcoming_sessions = Session.query.filter(Session.date >= date.today()).order_by(Session.date.asc()).all()
+
+    # Get completed sessions for current month
+    today = date.today()
+    first_of_month = today.replace(day=1)
+    past_sessions = Session.query.filter(
+        Session.date >= first_of_month,
+        Session.date < today
+    ).order_by(Session.date.desc()).all()
+
+    # Get attendance map for this player
+    attendance_map = {}
+    for att in Attendance.query.filter_by(player_id=player_id).all():
+        attendance_map[att.session_id] = att.status
+
+    # Get all players for showing attendance
+    all_players = Player.query.order_by(Player.name).all()
+
+    # Get all attendance records for sessions we're displaying
+    all_sessions = upcoming_sessions + past_sessions
+    session_attendance = {}  # {session_id: {player_id: status}}
+    for sess in all_sessions:
+        session_attendance[sess.id] = {}
+        for att in sess.attendances.all():
+            session_attendance[sess.id][att.player_id] = att.status
+
+    # Ensure current player has attendance records for all sessions
+    for sess in all_sessions:
+        if sess.id not in attendance_map:
+            attendance = Attendance(player_id=player_id, session_id=sess.id, status='NO')
+            db.session.add(attendance)
+            attendance_map[sess.id] = 'NO'
+            session_attendance[sess.id][player_id] = 'NO'
+    db.session.commit()
+
+    return render_template('player_sessions.html',
+                         player=player,
+                         upcoming_sessions=upcoming_sessions,
+                         past_sessions=past_sessions,
+                         attendance_map=attendance_map,
+                         all_players=all_players,
+                         session_attendance=session_attendance,
+                         current_month=today.strftime('%B %Y'))
+
+
+# Player attendance API - players can only update their own attendance
+@app.route('/api/player/attendance', methods=['POST'])
+@login_required
+def update_player_attendance():
+    if session.get('user_type') != 'player':
+        return jsonify({'error': 'Player access only'}), 403
+
+    player_id = session.get('player_id')
+    data = request.get_json()
+    session_id = data.get('session_id')
+    status = data.get('status')
+
+    if status not in ['YES', 'NO', 'TENTATIVE']:
+        return jsonify({'error': 'Invalid status'}), 400
+
+    attendance = Attendance.query.filter_by(player_id=player_id, session_id=session_id).first()
+
+    if attendance:
+        attendance.status = status
+    else:
+        attendance = Attendance(player_id=player_id, session_id=session_id, status=status)
+        db.session.add(attendance)
+
+    db.session.commit()
+
+    # Return updated session info
+    sess = Session.query.get(session_id)
+    return jsonify({
+        'success': True,
+        'attendee_count': sess.get_attendee_count(),
+        'cost_per_player': sess.get_cost_per_player()
+    })
+
+
 # Player routes
 @app.route('/players')
 @admin_required
