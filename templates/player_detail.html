@@ -31,10 +31,21 @@
                     Admin
                 </span>
                 {% endif %}
+                {% if not player.is_active %}
+                <span class="px-3 py-1.5 inline-flex text-xs leading-5 font-bold rounded-full shadow-sm bg-red-500 text-white">
+                    Inactive
+                </span>
+                {% endif %}
             </div>
         </div>
     </div>
     <div class="flex flex-wrap gap-3">
+        <form method="POST" action="{{ url_for('toggle_active', id=player.id) }}">
+            <button type="submit" class="px-5 py-2.5 {% if player.is_active %}bg-red-500 hover:bg-red-600{% else %}bg-green-500 hover:bg-green-600{% endif %} text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all inline-flex items-center space-x-2 border border-wimbledon-gold/30">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{% if player.is_active %}M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636{% else %}M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z{% endif %}"></path></svg>
+                <span>{% if player.is_active %}Deactivate{% else %}Activate{% endif %}</span>
+            </button>
+        </form>
         <form method="POST" action="{{ url_for('toggle_admin', id=player.id) }}">
             <button type="submit" class="px-5 py-2.5 {% if player.is_admin %}bg-yellow-500 hover:bg-yellow-600{% else %}bg-wimbledon-purple hover:bg-wimbledon-purple-light{% endif %} text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all inline-flex items-center space-x-2 border border-wimbledon-gold/30">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>

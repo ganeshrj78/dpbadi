@@ -69,6 +69,9 @@ def login():
             password = request.form.get('player_password')
             player = Player.query.filter(db.func.lower(Player.email) == email).first()
             if player and player.check_password(password):
+                if not player.is_active:
+                    flash('Your account has been deactivated. Please contact an admin.', 'error')
+                    return render_template('login.html')
                 session['authenticated'] = True
                 session['player_id'] = player.id
                 if player.is_admin:
@@ -238,7 +241,7 @@ def update_player_attendance():
     session_id = data.get('session_id')
     status = data.get('status')
 
-    if status not in ['YES', 'NO', 'TENTATIVE']:
+    if status not in ['YES', 'NO', 'TENTATIVE', 'DROPOUT', 'FILLIN']:
         return jsonify({'error': 'Invalid status'}), 400
 
     attendance = Attendance.query.filter_by(player_id=player_id, session_id=session_id).first()
@@ -387,6 +390,17 @@ def update_player_category(id):
     })
 
 
+@app.route('/players/<int:id>/toggle-active', methods=['POST'])
+@admin_required
+def toggle_active(id):
+    player = Player.query.get_or_404(id)
+    player.is_active = not player.is_active
+    db.session.commit()
+    status = 'activated' if player.is_active else 'deactivated'
+    flash(f'{player.name} has been {status}!', 'success')
+    return redirect(url_for('player_detail', id=id))
+
+
 # Session routes
 @app.route('/sessions')
 @admin_required
@@ -495,7 +509,7 @@ def update_attendance():
     session_id = data.get('session_id')
     status = data.get('status')
 
-    if status not in ['YES', 'NO', 'TENTATIVE']:
+    if status not in ['YES', 'NO', 'TENTATIVE', 'DROPOUT', 'FILLIN']:
         return jsonify({'error': 'Invalid status'}), 400
 
     attendance = Attendance.query.filter_by(player_id=player_id, session_id=session_id).first()

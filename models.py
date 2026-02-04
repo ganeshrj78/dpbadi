@@ -15,6 +15,7 @@ class Player(db.Model):
     password_hash = db.Column(db.String(255))
     zelle_preference = db.Column(db.String(10), default='email')  # 'email' or 'phone'
     is_admin = db.Column(db.Boolean, default=False)  # Player admin flag
+    is_active = db.Column(db.Boolean, default=True)  # Active/Inactive status
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     attendances = db.relationship('Attendance', backref='player', lazy='dynamic', cascade='all, delete-orphan')
@@ -115,7 +116,7 @@ class Attendance(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     player_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=False)
     session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=False)
-    status = db.Column(db.String(20), nullable=False, default='NO')  # YES, NO, TENTATIVE
+    status = db.Column(db.String(20), nullable=False, default='NO')  # YES, NO, TENTATIVE, DROPOUT, FILLIN
 
     __table_args__ = (db.UniqueConstraint('player_id', 'session_id', name='unique_player_session'),)
 

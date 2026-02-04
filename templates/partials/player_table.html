@@ -13,17 +13,22 @@
             </thead>
             <tbody class="divide-y divide-wimbledon-gold/10">
                 {% for player in player_list %}
-                <tr class="table-row-hover transition-all" x-data="{ showCategoryMenu: false }">
+                <tr class="table-row-hover transition-all {% if not player.is_active %}opacity-50{% endif %}" x-data="{ showCategoryMenu: false }">
                     <td class="px-6 py-4 whitespace-nowrap cursor-pointer" onclick="window.location='{{ url_for('player_detail', id=player.id) }}'">
                         <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 gradient-primary rounded-full flex items-center justify-center text-white font-bold shadow-md border border-wimbledon-gold/30">
+                            <div class="w-10 h-10 {% if player.is_active %}gradient-primary{% else %}bg-gray-400{% endif %} rounded-full flex items-center justify-center text-white font-bold shadow-md border border-wimbledon-gold/30">
                                 {{ player.name[0].upper() }}
                             </div>
                             <div>
-                                <div class="font-semibold text-gray-800">{{ player.name }}</div>
-                                {% if player.is_admin %}
-                                <span class="text-xs text-wimbledon-purple font-medium">Admin</span>
-                                {% endif %}
+                                <div class="font-semibold {% if player.is_active %}text-gray-800{% else %}text-gray-500{% endif %}">{{ player.name }}</div>
+                                <div class="flex gap-1">
+                                    {% if player.is_admin %}
+                                    <span class="text-xs text-wimbledon-purple font-medium">Admin</span>
+                                    {% endif %}
+                                    {% if not player.is_active %}
+                                    <span class="text-xs text-red-500 font-medium">Inactive</span>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                     </td>

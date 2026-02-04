@@ -98,7 +98,7 @@
 <!-- Attendance Grid -->
 <div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 overflow-hidden">
     <div class="px-6 py-4 border-b border-wimbledon-gold/20 bg-gradient-to-r from-wimbledon-cream to-white">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
                 <h2 class="text-lg font-serif font-bold text-gray-800 flex items-center">
                     <svg class="w-5 h-5 mr-2 text-wimbledon-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,20 +106,28 @@
                     </svg>
                     Attendance
                 </h2>
-                <p class="text-sm text-gray-500 mt-1">Click on status to toggle: YES → NO → TENTATIVE → YES</p>
+                <p class="text-sm text-gray-500 mt-1">Use the dropdown to set attendance status</p>
             </div>
-            <div class="flex items-center space-x-4 text-sm">
-                <span class="flex items-center space-x-1">
-                    <span class="w-3 h-3 bg-wimbledon-green rounded-full"></span>
-                    <span class="text-gray-500">Yes</span>
+            <div class="flex flex-wrap items-center gap-3 text-xs">
+                <span class="flex items-center gap-1 px-2 py-1 bg-green-100 rounded-full">
+                    <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                    <span class="text-green-700">Yes</span>
                 </span>
-                <span class="flex items-center space-x-1">
-                    <span class="w-3 h-3 bg-gray-300 rounded-full"></span>
-                    <span class="text-gray-500">No</span>
+                <span class="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full">
+                    <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                    <span class="text-gray-600">No</span>
                 </span>
-                <span class="flex items-center space-x-1">
-                    <span class="w-3 h-3 bg-wimbledon-gold rounded-full"></span>
-                    <span class="text-gray-500">Tentative</span>
+                <span class="flex items-center gap-1 px-2 py-1 bg-yellow-100 rounded-full">
+                    <span class="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                    <span class="text-yellow-700">Tentative</span>
+                </span>
+                <span class="flex items-center gap-1 px-2 py-1 bg-red-100 rounded-full">
+                    <span class="w-2 h-2 bg-red-500 rounded-full"></span>
+                    <span class="text-red-700">Dropout</span>
+                </span>
+                <span class="flex items-center gap-1 px-2 py-1 bg-blue-100 rounded-full">
+                    <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                    <span class="text-blue-700">Fill-in</span>
                 </span>
             </div>
         </div>
@@ -135,13 +143,19 @@
             </thead>
             <tbody class="divide-y divide-wimbledon-gold/10">
                 {% for player in players %}
+                {% if player.is_active %}
                 <tr class="hover:bg-wimbledon-cream/50 transition-all">
                     <td class="px-6 py-4 whitespace-nowrap">
                         <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-3 group">
                             <div class="w-10 h-10 gradient-primary rounded-full flex items-center justify-center text-white font-bold shadow-md border border-wimbledon-gold/30">
                                 {{ player.name[0].upper() }}
                             </div>
-                            <span class="font-semibold text-gray-800 group-hover:text-wimbledon-purple transition-colors">{{ player.name }}</span>
+                            <div>
+                                <span class="font-semibold text-gray-800 group-hover:text-wimbledon-purple transition-colors">{{ player.name }}</span>
+                                {% if player.is_admin %}
+                                <span class="ml-2 text-xs text-wimbledon-purple font-medium">Admin</span>
+                                {% endif %}
+                            </div>
                         </a>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
@@ -153,17 +167,24 @@
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
-                        <button
-                            onclick="toggleAttendance({{ player.id }}, {{ session.id }}, this)"
-                            data-status="{{ attendance_map.get(player.id, 'NO') }}"
-                            class="attendance-btn px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg transform hover:scale-105
-                            {% if attendance_map.get(player.id, 'NO') == 'YES' %}gradient-success text-white
-                            {% elif attendance_map.get(player.id, 'NO') == 'TENTATIVE' %}gradient-gold text-wimbledon-purple-dark
-                            {% else %}bg-gray-200 text-gray-600 hover:bg-gray-300{% endif %}">
-                            {{ attendance_map.get(player.id, 'NO') }}
-                        </button>
+                        {% set current_status = attendance_map.get(player.id, 'NO') %}
+                        <select
+                            onchange="updateAttendance({{ player.id }}, {{ session.id }}, this.value, this)"
+                            class="px-4 py-2 rounded-lg font-bold text-sm border-2 cursor-pointer transition-all
+                            {% if current_status == 'YES' %}bg-green-100 border-green-300 text-green-700
+                            {% elif current_status == 'TENTATIVE' %}bg-yellow-100 border-yellow-300 text-yellow-700
+                            {% elif current_status == 'DROPOUT' %}bg-red-100 border-red-300 text-red-700
+                            {% elif current_status == 'FILLIN' %}bg-blue-100 border-blue-300 text-blue-700
+                            {% else %}bg-gray-100 border-gray-300 text-gray-600{% endif %}">
+                            <option value="YES" {% if current_status == 'YES' %}selected{% endif %}>Yes</option>
+                            <option value="NO" {% if current_status == 'NO' %}selected{% endif %}>No</option>
+                            <option value="TENTATIVE" {% if current_status == 'TENTATIVE' %}selected{% endif %}>Tentative</option>
+                            <option value="DROPOUT" {% if current_status == 'DROPOUT' %}selected{% endif %}>Dropout</option>
+                            <option value="FILLIN" {% if current_status == 'FILLIN' %}selected{% endif %}>Fill-in</option>
+                        </select>
                     </td>
                 </tr>
+                {% endif %}
                 {% endfor %}
             </tbody>
         </table>
@@ -173,18 +194,7 @@
 
 {% block scripts %}
 <script>
-function toggleAttendance(playerId, sessionId, button) {
-    const currentStatus = button.dataset.status;
-    let newStatus;
-
-    if (currentStatus === 'YES') {
-        newStatus = 'NO';
-    } else if (currentStatus === 'NO') {
-        newStatus = 'TENTATIVE';
-    } else {
-        newStatus = 'YES';
-    }
-
+function updateAttendance(playerId, sessionId, status, selectElement) {
     fetch('/api/attendance', {
         method: 'POST',
         headers: {
@@ -193,22 +203,24 @@ function toggleAttendance(playerId, sessionId, button) {
         body: JSON.stringify({
             player_id: playerId,
             session_id: sessionId,
-            status: newStatus
+            status: status
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            button.dataset.status = newStatus;
-            button.textContent = newStatus;
-
-            button.className = 'attendance-btn px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg transform hover:scale-105 ';
-            if (newStatus === 'YES') {
-                button.className += 'gradient-success text-white';
-            } else if (newStatus === 'TENTATIVE') {
-                button.className += 'gradient-gold text-wimbledon-purple-dark';
+            // Update select styling based on new status
+            selectElement.className = 'px-4 py-2 rounded-lg font-bold text-sm border-2 cursor-pointer transition-all ';
+            if (status === 'YES') {
+                selectElement.className += 'bg-green-100 border-green-300 text-green-700';
+            } else if (status === 'TENTATIVE') {
+                selectElement.className += 'bg-yellow-100 border-yellow-300 text-yellow-700';
+            } else if (status === 'DROPOUT') {
+                selectElement.className += 'bg-red-100 border-red-300 text-red-700';
+            } else if (status === 'FILLIN') {
+                selectElement.className += 'bg-blue-100 border-blue-300 text-blue-700';
             } else {
-                button.className += 'bg-gray-200 text-gray-600 hover:bg-gray-300';
+                selectElement.className += 'bg-gray-100 border-gray-300 text-gray-600';
             }
 
             document.getElementById('attendee-count').textContent = data.attendee_count;
