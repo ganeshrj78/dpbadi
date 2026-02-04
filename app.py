@@ -435,10 +435,10 @@ def add_session():
         db.session.add(new_session)
         db.session.commit()
 
-        # Create attendance records for all players (default NO)
+        # Create attendance records for all players (default NO, category from player)
         players = Player.query.all()
         for player in players:
-            attendance = Attendance(player_id=player.id, session_id=new_session.id, status='NO')
+            attendance = Attendance(player_id=player.id, session_id=new_session.id, status='NO', category=player.category)
             db.session.add(attendance)
         db.session.commit()
 
@@ -456,18 +456,21 @@ def session_detail(id):
 
     # Get attendance for all players
     attendance_map = {}
+    category_map = {}
     for att in sess.attendances.all():
         attendance_map[att.player_id] = att.status
+        category_map[att.player_id] = att.category
 
     # Ensure all players have attendance records
     for player in players:
         if player.id not in attendance_map:
-            attendance = Attendance(player_id=player.id, session_id=id, status='NO')
+            attendance = Attendance(player_id=player.id, session_id=id, status='NO', category=player.category)
             db.session.add(attendance)
             attendance_map[player.id] = 'NO'
+            category_map[player.id] = player.category
     db.session.commit()
 
-    return render_template('session_detail.html', session=sess, players=players, attendance_map=attendance_map)
+    return render_template('session_detail.html', session=sess, players=players, attendance_map=attendance_map, category_map=category_map)
 
 
 @app.route('/sessions/<int:id>/edit', methods=['GET', 'POST'])
@@ -517,7 +520,8 @@ def update_attendance():
     if attendance:
         attendance.status = status
     else:
-        attendance = Attendance(player_id=player_id, session_id=session_id, status=status)
+        player = Player.query.get(player_id)
+        attendance = Attendance(player_id=player_id, session_id=session_id, status=status, category=player.category if player else 'regular')
         db.session.add(attendance)
 
     db.session.commit()
@@ -528,6 +532,36 @@ def update_attendance():
         'success': True,
         'attendee_count': sess.get_attendee_count(),
         'cost_per_player': sess.get_cost_per_player()
+    })
+
+
+# Attendance category API - update player category for a specific session
+@app.route('/api/attendance/category', methods=['POST'])
+@admin_required
+def update_attendance_category():
+    data = request.get_json()
+    player_id = data.get('player_id')
+    session_id = data.get('session_id')
+    category = data.get('category')
+
+    if category not in ['regular', 'adhoc', 'kid']:
+        return jsonify({'error': 'Invalid category'}), 400
+
+    attendance = Attendance.query.filter_by(player_id=player_id, session_id=session_id).first()
+
+    if attendance:
+        attendance.category = category
+    else:
+        attendance = Attendance(player_id=player_id, session_id=session_id, status='NO', category=category)
+        db.session.add(attendance)
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'player_id': player_id,
+        'session_id': session_id,
+        'category': category
     })
 
 

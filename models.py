@@ -117,6 +117,7 @@ class Attendance(db.Model):
     player_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=False)
     session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=False)
     status = db.Column(db.String(20), nullable=False, default='NO')  # YES, NO, TENTATIVE, DROPOUT, FILLIN
+    category = db.Column(db.String(20), default='regular')  # regular, adhoc, kid - category for this session
 
     __table_args__ = (db.UniqueConstraint('player_id', 'session_id', name='unique_player_session'),)
 
@@ -126,6 +127,7 @@ class Attendance(db.Model):
             'player_id': self.player_id,
             'session_id': self.session_id,
             'status': self.status,
+            'category': self.category,
             'player_name': self.player.name if self.player else None
         }
 
