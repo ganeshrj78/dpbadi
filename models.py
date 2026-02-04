@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
@@ -11,10 +12,22 @@ class Player(db.Model):
     category = db.Column(db.String(20), nullable=False, default='regular')  # regular, adhoc, kid
     phone = db.Column(db.String(20))
     email = db.Column(db.String(100))
+    password_hash = db.Column(db.String(255))
+    zelle_preference = db.Column(db.String(10), default='email')  # 'email' or 'phone'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     attendances = db.relationship('Attendance', backref='player', lazy='dynamic', cascade='all, delete-orphan')
     payments = db.relationship('Payment', backref='player', lazy='dynamic', cascade='all, delete-orphan')
+
+    def set_password(self, password):
+        """Set password hash from plain text password"""
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
+
+    def check_password(self, password):
+        """Check if provided password matches hash"""
+        if not self.password_hash:
+            return False
+        return check_password_hash(self.password_hash, password)
 
     def get_total_charges(self):
         """Calculate total charges from attended sessions"""
@@ -42,6 +55,7 @@ class Player(db.Model):
             'category': self.category,
             'phone': self.phone,
             'email': self.email,
+            'zelle_preference': self.zelle_preference,
             'total_charges': self.get_total_charges(),
             'total_payments': self.get_total_payments(),
             'balance': self.get_balance()

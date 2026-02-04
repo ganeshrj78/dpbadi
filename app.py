@@ -23,22 +23,54 @@ def login_required(f):
     return decorated_function
 
 
+# Admin-only decorator
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('authenticated'):
+            return redirect(url_for('login'))
+        if session.get('user_type') != 'admin':
+            flash('Admin access required', 'error')
+            return redirect(url_for('player_profile'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 # Auth routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        password = request.form.get('password')
-        if password == app.config['APP_PASSWORD']:
-            session['authenticated'] = True
-            flash('Successfully logged in!', 'success')
-            return redirect(url_for('dashboard'))
-        flash('Invalid password', 'error')
+        login_type = request.form.get('login_type', 'admin')
+
+        if login_type == 'admin':
+            password = request.form.get('password')
+            if password == app.config['APP_PASSWORD']:
+                session['authenticated'] = True
+                session['user_type'] = 'admin'
+                flash('Successfully logged in as admin!', 'success')
+                return redirect(url_for('dashboard'))
+            flash('Invalid password', 'error')
+        else:
+            # Player login
+            email = request.form.get('email', '').strip().lower()
+            password = request.form.get('player_password')
+            player = Player.query.filter(db.func.lower(Player.email) == email).first()
+            if player and player.check_password(password):
+                session['authenticated'] = True
+                session['user_type'] = 'player'
+                session['player_id'] = player.id
+                flash(f'Welcome back, {player.name}!', 'success')
+                return redirect(url_for('player_profile'))
+            flash('Invalid email or password', 'error')
+
     return render_template('login.html')
 
 
 @app.route('/logout')
 def logout():
     session.pop('authenticated', None)
+    session.pop('user_type', None)
+    session.pop('player_id', None)
     flash('Logged out successfully', 'success')
     return redirect(url_for('login'))
 
@@ -47,6 +79,10 @@ def logout():
 @app.route('/')
 @login_required
 def dashboard():
+    # Redirect players to their profile
+    if session.get('user_type') == 'player':
+        return redirect(url_for('player_profile'))
+
     total_players = Player.query.count()
     upcoming_sessions = Session.query.filter(Session.date >= date.today()).count()
 
@@ -70,9 +106,54 @@ def dashboard():
                          recent_payments=recent_payments)
 
 
+# Player self-service profile
+@app.route('/player/profile', methods=['GET', 'POST'])
+@login_required
+def player_profile():
+    if session.get('user_type') != 'player':
+        return redirect(url_for('dashboard'))
+
+    player_id = session.get('player_id')
+    player = Player.query.get_or_404(player_id)
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+
+        if action == 'update_zelle':
+            zelle_pref = request.form.get('zelle_preference')
+            if zelle_pref in ['email', 'phone']:
+                player.zelle_preference = zelle_pref
+                db.session.commit()
+                flash('Zelle preference updated!', 'success')
+
+        elif action == 'change_password':
+            current_password = request.form.get('current_password')
+            new_password = request.form.get('new_password')
+            confirm_password = request.form.get('confirm_password')
+
+            if not player.check_password(current_password):
+                flash('Current password is incorrect', 'error')
+            elif new_password != confirm_password:
+                flash('New passwords do not match', 'error')
+            elif len(new_password) < 4:
+                flash('Password must be at least 4 characters', 'error')
+            else:
+                player.set_password(new_password)
+                db.session.commit()
+                flash('Password changed successfully!', 'success')
+
+        return redirect(url_for('player_profile'))
+
+    # Get attendance history
+    attendances = player.attendances.join(Session).order_by(Session.date.desc()).all()
+    payments = player.payments.order_by(Payment.date.desc()).all()
+
+    return render_template('player_profile.html', player=player, attendances=attendances, payments=payments)
+
+
 # Player routes
 @app.route('/players')
-@login_required
+@admin_required
 def players():
     category = request.args.get('category', 'all')
     search_query = request.args.get('search', '').strip()
@@ -100,19 +181,23 @@ def players():
 
 
 @app.route('/players/add', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def add_player():
     if request.method == 'POST':
         name = request.form.get('name')
         category = request.form.get('category', 'regular')
         phone = request.form.get('phone')
         email = request.form.get('email')
+        password = request.form.get('password')
+        zelle_preference = request.form.get('zelle_preference', 'email')
 
         if not name:
             flash('Name is required', 'error')
             return render_template('player_form.html', player=None)
 
-        player = Player(name=name, category=category, phone=phone, email=email)
+        player = Player(name=name, category=category, phone=phone, email=email, zelle_preference=zelle_preference)
+        if password:
+            player.set_password(password)
         db.session.add(player)
         db.session.commit()
         flash(f'Player {name} added successfully!', 'success')
@@ -122,7 +207,7 @@ def add_player():
 
 
 @app.route('/players/<int:id>')
-@login_required
+@admin_required
 def player_detail(id):
     player = Player.query.get_or_404(id)
     attendances = player.attendances.join(Session).order_by(Session.date.desc()).all()
@@ -131,7 +216,7 @@ def player_detail(id):
 
 
 @app.route('/players/<int:id>/edit', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def edit_player(id):
     player = Player.query.get_or_404(id)
 
@@ -140,6 +225,10 @@ def edit_player(id):
         player.category = request.form.get('category', 'regular')
         player.phone = request.form.get('phone')
         player.email = request.form.get('email')
+        player.zelle_preference = request.form.get('zelle_preference', 'email')
+        password = request.form.get('password')
+        if password:
+            player.set_password(password)
         db.session.commit()
         flash(f'Player {player.name} updated successfully!', 'success')
         return redirect(url_for('player_detail', id=id))
@@ -148,7 +237,7 @@ def edit_player(id):
 
 
 @app.route('/players/<int:id>/delete', methods=['POST'])
-@login_required
+@admin_required
 def delete_player(id):
     player = Player.query.get_or_404(id)
     name = player.name
@@ -160,14 +249,14 @@ def delete_player(id):
 
 # Session routes
 @app.route('/sessions')
-@login_required
+@admin_required
 def sessions():
     session_list = Session.query.order_by(Session.date.desc()).all()
     return render_template('sessions.html', sessions=session_list)
 
 
 @app.route('/sessions/add', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def add_session():
     if request.method == 'POST':
         date_str = request.form.get('date')
@@ -206,7 +295,7 @@ def add_session():
 
 
 @app.route('/sessions/<int:id>')
-@login_required
+@admin_required
 def session_detail(id):
     sess = Session.query.get_or_404(id)
     players = Player.query.order_by(Player.name).all()
@@ -228,7 +317,7 @@ def session_detail(id):
 
 
 @app.route('/sessions/<int:id>/edit', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def edit_session(id):
     sess = Session.query.get_or_404(id)
 
@@ -248,7 +337,7 @@ def edit_session(id):
 
 
 @app.route('/sessions/<int:id>/delete', methods=['POST'])
-@login_required
+@admin_required
 def delete_session(id):
     sess = Session.query.get_or_404(id)
     db.session.delete(sess)
@@ -259,7 +348,7 @@ def delete_session(id):
 
 # Attendance API
 @app.route('/api/attendance', methods=['POST'])
-@login_required
+@admin_required
 def update_attendance():
     data = request.get_json()
     player_id = data.get('player_id')
@@ -290,7 +379,7 @@ def update_attendance():
 
 # Payment routes
 @app.route('/payments')
-@login_required
+@admin_required
 def payments():
     payment_list = Payment.query.order_by(Payment.date.desc()).all()
 
@@ -309,7 +398,7 @@ def payments():
 
 
 @app.route('/payments/add', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def add_payment():
     if request.method == 'POST':
         player_id = int(request.form.get('player_id'))
@@ -339,7 +428,7 @@ def add_payment():
 
 
 @app.route('/payments/<int:id>/delete', methods=['POST'])
-@login_required
+@admin_required
 def delete_payment(id):
     payment = Payment.query.get_or_404(id)
     db.session.delete(payment)

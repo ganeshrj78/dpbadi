@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="min-h-[85vh] flex items-center justify-center">
-    <div class="w-full max-w-md">
+    <div class="w-full max-w-md" x-data="{ loginType: 'admin' }">
         <!-- Logo and Title -->
         <div class="text-center mb-8">
             <div class="inline-flex items-center justify-center w-24 h-24 gradient-primary rounded-full shadow-xl mb-4 border-4 border-wimbledon-gold">
@@ -20,22 +20,81 @@
             <p class="text-gray-500 mt-3">Court Reservation & Payment Tracker</p>
         </div>
 
+        <!-- Login Type Toggle -->
+        <div class="flex justify-center mb-6">
+            <div class="bg-white/50 rounded-xl p-1 inline-flex border border-wimbledon-gold/20">
+                <button type="button"
+                    @click="loginType = 'admin'"
+                    :class="loginType === 'admin' ? 'bg-wimbledon-purple text-white shadow-md' : 'text-gray-600 hover:text-wimbledon-purple'"
+                    class="px-6 py-2 rounded-lg font-medium transition-all">
+                    Admin
+                </button>
+                <button type="button"
+                    @click="loginType = 'player'"
+                    :class="loginType === 'player' ? 'bg-wimbledon-purple text-white shadow-md' : 'text-gray-600 hover:text-wimbledon-purple'"
+                    class="px-6 py-2 rounded-lg font-medium transition-all">
+                    Player
+                </button>
+            </div>
+        </div>
+
         <!-- Login Card -->
         <div class="bg-white/90 backdrop-blur-lg rounded-2xl shadow-xl p-8 border border-wimbledon-gold/30">
             <form method="POST" class="space-y-6">
-                <div>
-                    <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">Enter Password</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <svg class="w-5 h-5 text-wimbledon-purple/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                            </svg>
+                <input type="hidden" name="login_type" :value="loginType">
+
+                <!-- Admin Login -->
+                <div x-show="loginType === 'admin'" x-transition>
+                    <div>
+                        <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">Admin Password</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <svg class="w-5 h-5 text-wimbledon-purple/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                </svg>
+                            </div>
+                            <input type="password" name="password" id="password"
+                                class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all"
+                                placeholder="Enter admin password"
+                                x-bind:required="loginType === 'admin'">
                         </div>
-                        <input type="password" name="password" id="password" required
-                            class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all"
-                            placeholder="Enter your password">
                     </div>
                 </div>
+
+                <!-- Player Login -->
+                <div x-show="loginType === 'player'" x-transition>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="email" class="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <svg class="w-5 h-5 text-wimbledon-purple/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>
+                                <input type="email" name="email" id="email"
+                                    class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all"
+                                    placeholder="your@email.com"
+                                    x-bind:required="loginType === 'player'">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="player_password" class="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <svg class="w-5 h-5 text-wimbledon-purple/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                    </svg>
+                                </div>
+                                <input type="password" name="player_password" id="player_password"
+                                    class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all"
+                                    placeholder="Enter your password"
+                                    x-bind:required="loginType === 'player'">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <button type="submit"
                     class="w-full btn-success text-white py-3 px-4 rounded-xl font-semibold shadow-lg border border-wimbledon-gold/30">
                     <span class="flex items-center justify-center space-x-2">

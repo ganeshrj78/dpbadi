@@ -76,6 +76,44 @@
                 </div>
             </div>
 
+            <!-- Zelle Preference -->
+            <div>
+                <label for="zelle_preference" class="block text-sm font-semibold text-gray-700 mb-2">Zelle Preference</label>
+                <p class="text-xs text-gray-500 mb-2">How should payments be sent to this player via Zelle?</p>
+                <select name="zelle_preference" id="zelle_preference"
+                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all bg-white">
+                    <option value="email" {% if not player or player.zelle_preference == 'email' %}selected{% endif %}>Email</option>
+                    <option value="phone" {% if player and player.zelle_preference == 'phone' %}selected{% endif %}>Phone</option>
+                </select>
+            </div>
+
+            <!-- Password Section -->
+            <div class="border-t border-gray-200 pt-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4">Player Login Credentials</h3>
+                <div>
+                    <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">
+                        {% if player %}New Password (leave blank to keep current){% else %}Password (optional){% endif %}
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <svg class="w-5 h-5 text-wimbledon-purple/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                            </svg>
+                        </div>
+                        <input type="password" name="password" id="password"
+                            class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all"
+                            placeholder="{% if player %}Enter new password{% else %}Set a password for player login{% endif %}">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">
+                        {% if player %}
+                        Only fill this if you want to change the player's password. {% if player.password_hash %}Player currently has a password set.{% else %}Player does not have a password set yet.{% endif %}
+                        {% else %}
+                        If set, the player can log in with their email and this password to view their profile.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
             <div class="flex justify-end space-x-4 pt-4">
                 <a href="{{ url_for('players') }}" class="px-6 py-3 border-2 border-wimbledon-gold/30 rounded-xl text-gray-600 hover:bg-wimbledon-cream font-medium transition-all">
                     Cancel
