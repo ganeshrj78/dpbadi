@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
+
 class Player(db.Model):
     __tablename__ = 'players'
 
@@ -16,7 +17,12 @@ class Player(db.Model):
     zelle_preference = db.Column(db.String(10), default='email')  # 'email' or 'phone'
     is_admin = db.Column(db.Boolean, default=False)  # Player admin flag
     is_active = db.Column(db.Boolean, default=True)  # Active/Inactive status
+
+    # Audit fields
+    created_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     attendances = db.relationship('Attendance', backref='player', lazy='dynamic', cascade='all, delete-orphan')
     payments = db.relationship('Payment', backref='player', lazy='dynamic', cascade='all, delete-orphan')
@@ -72,6 +78,12 @@ class Session(db.Model):
     birdie_cost = db.Column(db.Float, nullable=False, default=0)
     notes = db.Column(db.Text)
     is_archived = db.Column(db.Boolean, default=False)
+
+    # Audit fields
+    created_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     attendances = db.relationship('Attendance', backref='session', lazy='dynamic', cascade='all, delete-orphan')
     courts = db.relationship('Court', backref='session', lazy='dynamic', cascade='all, delete-orphan', order_by='Court.id')
@@ -139,6 +151,12 @@ class Court(db.Model):
     end_time = db.Column(db.String(20), nullable=False)    # "9:30 AM"
     cost = db.Column(db.Float, nullable=False, default=0)
 
+    # Audit fields
+    created_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -158,6 +176,12 @@ class Attendance(db.Model):
     session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=False)
     status = db.Column(db.String(20), nullable=False, default='NO')  # YES, NO, TENTATIVE, DROPOUT, FILLIN
     category = db.Column(db.String(20), default='regular')  # regular, adhoc, kid - category for this session
+
+    # Audit fields
+    created_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (db.UniqueConstraint('player_id', 'session_id', name='unique_player_session'),)
 
@@ -181,6 +205,12 @@ class Payment(db.Model):
     method = db.Column(db.String(20), nullable=False)  # Zelle, Cash, Venmo
     date = db.Column(db.DateTime, default=datetime.utcnow)
     notes = db.Column(db.Text)
+
+    # Audit fields
+    created_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def to_dict(self):
         return {

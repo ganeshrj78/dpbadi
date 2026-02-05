@@ -11,8 +11,8 @@ def get_database_url():
         if database_url.startswith('postgres://'):
             database_url = database_url.replace('postgres://', 'postgresql://', 1)
         return database_url
-    # Default to SQLite for local development
-    return 'sqlite:///bpbadi.db'
+    # Default to PostgreSQL on Render (use DATABASE_URL=sqlite:///bpbadi.db for local SQLite)
+    return 'postgresql://bpbadi:CST5mAxWoXckdKW1xy439x5Spsk2h8JQ@dpg-d62h9ki4d50c73d3ocog-a.oregon-postgres.render.com/bpbadi_6yab'
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
