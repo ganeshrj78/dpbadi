@@ -131,6 +131,7 @@
         </div>
         <div class="divide-y divide-wimbledon-gold/10">
             {% for session in recent_sessions %}
+            {% set start_time, end_time = session.get_time_range() %}
             <a href="{{ url_for('session_detail', id=session.id) }}" class="block px-6 py-4 hover:bg-gradient-to-r hover:from-wimbledon-purple/5 hover:to-wimbledon-green/5 transition-all">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center space-x-4">
@@ -139,7 +140,7 @@
                         </div>
                         <div>
                             <div class="font-semibold text-gray-800">{{ session.date.strftime('%B %Y') }}</div>
-                            <div class="text-sm text-gray-500">{{ session.start_time }} - {{ session.end_time }}</div>
+                            <div class="text-sm text-gray-500">{{ start_time }} - {{ end_time }}</div>
                         </div>
                     </div>
                     <div class="text-right">
@@ -148,7 +149,7 @@
                                 {{ session.get_attendee_count() }} players
                             </span>
                         </div>
-                        <div class="text-sm text-gray-500 mt-1">{{ session.courts }} court(s)</div>
+                        <div class="text-sm text-gray-500 mt-1">{{ session.get_court_count() }} court(s)</div>
                     </div>
                 </div>
             </a>

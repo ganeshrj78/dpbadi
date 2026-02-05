@@ -15,8 +15,16 @@
     </a>
 </div>
 
-<!-- Sessions Grid -->
-<div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 overflow-hidden">
+<!-- Active Sessions -->
+<div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 overflow-hidden mb-8">
+    <div class="px-6 py-4 border-b border-wimbledon-gold/20 bg-gradient-to-r from-wimbledon-cream to-white">
+        <h2 class="text-lg font-serif font-bold text-wimbledon-purple flex items-center">
+            <svg class="w-5 h-5 mr-2 text-wimbledon-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            Active Sessions
+        </h2>
+    </div>
     <div class="overflow-x-auto">
         <table class="min-w-full">
             <thead>
@@ -30,7 +38,7 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-wimbledon-gold/10">
-                {% for session in sessions %}
+                {% for session in active_sessions %}
                 {% set start_time, end_time = session.get_time_range() %}
                 <tr class="table-row-hover cursor-pointer transition-all" onclick="window.location='{{ url_for('session_detail', id=session.id) }}'">
                     <td class="px-6 py-4 whitespace-nowrap">
@@ -76,8 +84,8 @@
                         <svg class="w-16 h-16 mx-auto text-wimbledon-purple/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                         </svg>
-                        <p class="text-gray-500 font-medium">No sessions found</p>
-                        <p class="text-gray-400 text-sm mt-1">Create your first session to get started</p>
+                        <p class="text-gray-500 font-medium">No active sessions</p>
+                        <p class="text-gray-400 text-sm mt-1">Create a new session to get started</p>
                     </td>
                 </tr>
                 {% endfor %}
@@ -85,4 +93,58 @@
         </table>
     </div>
 </div>
+
+<!-- Archived Sessions -->
+{% if archived_groups %}
+<div class="mb-8">
+    <h2 class="text-xl font-serif font-bold text-gray-500 mb-4 flex items-center">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
+        </svg>
+        Archived Sessions
+    </h2>
+
+    {% for key, group in archived_groups %}
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden mb-4" x-data="{ open: false }">
+        <button @click="open = !open" class="w-full px-6 py-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-all">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                <span class="font-semibold text-gray-700">{{ group.label }}</span>
+                <span class="text-sm text-gray-500">({{ group.sessions|length }} session{% if group.sessions|length != 1 %}s{% endif %})</span>
+            </div>
+            <svg class="w-5 h-5 text-gray-400 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+        </button>
+        <div x-show="open" x-collapse>
+            <div class="divide-y divide-gray-100">
+                {% for session in group.sessions %}
+                {% set start_time, end_time = session.get_time_range() %}
+                <a href="{{ url_for('session_detail', id=session.id) }}" class="block px-6 py-4 hover:bg-gray-50 transition-all">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-gray-100 rounded-lg flex flex-col items-center justify-center">
+                                <span class="text-lg font-bold text-gray-600">{{ session.date.strftime('%d') }}</span>
+                            </div>
+                            <div>
+                                <div class="font-medium text-gray-700">{{ session.date.strftime('%A') }}</div>
+                                <div class="text-sm text-gray-500">{{ start_time }} - {{ end_time }}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 text-sm text-gray-500">
+                            <span>{{ session.get_court_count() }} court{% if session.get_court_count() > 1 %}s{% endif %}</span>
+                            <span>{{ session.get_attendee_count() }} players</span>
+                            <span class="font-medium text-gray-700">${{ "%.2f"|format(session.get_cost_per_player()) }}/player</span>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 {% endblock %}

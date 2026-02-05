@@ -405,8 +405,27 @@ def toggle_active(id):
 @app.route('/sessions')
 @admin_required
 def sessions():
-    session_list = Session.query.order_by(Session.date.desc()).all()
-    return render_template('sessions.html', sessions=session_list)
+    # Active sessions (not archived)
+    active_sessions = Session.query.filter_by(is_archived=False).order_by(Session.date.desc()).all()
+
+    # Archived sessions grouped by year and month
+    archived_sessions = Session.query.filter_by(is_archived=True).order_by(Session.date.desc()).all()
+
+    # Group archived by year-month
+    archived_grouped = {}
+    for sess in archived_sessions:
+        key = sess.date.strftime('%Y-%m')
+        label = sess.date.strftime('%B %Y')
+        if key not in archived_grouped:
+            archived_grouped[key] = {'label': label, 'sessions': []}
+        archived_grouped[key]['sessions'].append(sess)
+
+    # Sort by key (year-month) descending
+    archived_sorted = sorted(archived_grouped.items(), key=lambda x: x[0], reverse=True)
+
+    return render_template('sessions.html',
+                          active_sessions=active_sessions,
+                          archived_groups=archived_sorted)
 
 
 @app.route('/sessions/add', methods=['GET', 'POST'])
@@ -527,6 +546,17 @@ def delete_session(id):
     db.session.commit()
     flash('Session deleted successfully!', 'success')
     return redirect(url_for('sessions'))
+
+
+@app.route('/sessions/<int:id>/toggle-archive', methods=['POST'])
+@admin_required
+def toggle_archive(id):
+    sess = Session.query.get_or_404(id)
+    sess.is_archived = not sess.is_archived
+    db.session.commit()
+    status = 'archived' if sess.is_archived else 'unarchived'
+    flash(f'Session {status} successfully!', 'success')
+    return redirect(url_for('session_detail', id=id))
 
 
 # Attendance API

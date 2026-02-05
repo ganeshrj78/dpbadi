@@ -71,6 +71,7 @@ class Session(db.Model):
     date = db.Column(db.Date, nullable=False)
     birdie_cost = db.Column(db.Float, nullable=False, default=0)
     notes = db.Column(db.Text)
+    is_archived = db.Column(db.Boolean, default=False)
 
     attendances = db.relationship('Attendance', backref='session', lazy='dynamic', cascade='all, delete-orphan')
     courts = db.relationship('Court', backref='session', lazy='dynamic', cascade='all, delete-orphan', order_by='Court.id')
