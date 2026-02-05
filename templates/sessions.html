@@ -31,6 +31,7 @@
             </thead>
             <tbody class="divide-y divide-wimbledon-gold/10">
                 {% for session in sessions %}
+                {% set start_time, end_time = session.get_time_range() %}
                 <tr class="table-row-hover cursor-pointer transition-all" onclick="window.location='{{ url_for('session_detail', id=session.id) }}'">
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center space-x-3">
@@ -47,12 +48,12 @@
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center space-x-2">
                             <svg class="w-5 h-5 text-wimbledon-purple/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            <span class="text-gray-600">{{ session.start_time }} - {{ session.end_time }}</span>
+                            <span class="text-gray-600">{{ start_time }} - {{ end_time }}</span>
                         </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                         <span class="px-4 py-2 bg-wimbledon-purple/10 text-wimbledon-purple rounded-full text-sm font-bold border border-wimbledon-purple/20">
-                            {{ session.courts }} court{% if session.courts > 1 %}s{% endif %}
+                            {{ session.get_court_count() }} court{% if session.get_court_count() > 1 %}s{% endif %}
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">

@@ -38,7 +38,7 @@ class Player(db.Model):
             session = attendance.session
             attendee_count = session.attendances.filter_by(status='YES').count()
             if attendee_count > 0:
-                court_cost_per_player = (session.courts * session.court_cost) / attendee_count
+                court_cost_per_player = session.get_total_cost() / attendee_count
                 total += court_cost_per_player + session.birdie_cost
         return round(total, 2)
 
@@ -69,22 +69,40 @@ class Session(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False)
-    start_time = db.Column(db.String(20), nullable=False)  # "6:30 AM"
-    end_time = db.Column(db.String(20), nullable=False)    # "9:30 AM"
-    courts = db.Column(db.Integer, nullable=False, default=1)
-    court_cost = db.Column(db.Float, nullable=False, default=0)
     birdie_cost = db.Column(db.Float, nullable=False, default=0)
     notes = db.Column(db.Text)
 
     attendances = db.relationship('Attendance', backref='session', lazy='dynamic', cascade='all, delete-orphan')
+    courts = db.relationship('Court', backref='session', lazy='dynamic', cascade='all, delete-orphan', order_by='Court.id')
 
     def get_attendee_count(self):
         """Count players who attended (status=YES)"""
         return self.attendances.filter_by(status='YES').count()
 
+    def get_court_count(self):
+        """Get number of courts booked"""
+        return self.courts.count()
+
+    def get_suggested_courts(self):
+        """Suggest number of courts based on attendees (6 players per court)"""
+        attendees = self.get_attendee_count()
+        if attendees == 0:
+            return 1
+        import math
+        return math.ceil(attendees / 6)
+
     def get_total_cost(self):
-        """Calculate total session cost"""
-        return self.courts * self.court_cost
+        """Calculate total session cost from all courts"""
+        return sum(court.cost for court in self.courts.all())
+
+    def get_time_range(self):
+        """Get overall time range from all courts"""
+        court_list = self.courts.all()
+        if not court_list:
+            return "No courts", "No courts"
+        start_times = [c.start_time for c in court_list]
+        end_times = [c.end_time for c in court_list]
+        return min(start_times), max(end_times)
 
     def get_cost_per_player(self):
         """Calculate cost per attending player"""
@@ -95,18 +113,39 @@ class Session(db.Model):
         return round(court_cost_per_player + self.birdie_cost, 2)
 
     def to_dict(self):
+        start_time, end_time = self.get_time_range()
         return {
             'id': self.id,
             'date': self.date.isoformat(),
-            'start_time': self.start_time,
-            'end_time': self.end_time,
-            'courts': self.courts,
-            'court_cost': self.court_cost,
+            'start_time': start_time,
+            'end_time': end_time,
+            'court_count': self.get_court_count(),
             'birdie_cost': self.birdie_cost,
             'notes': self.notes,
             'attendee_count': self.get_attendee_count(),
             'total_cost': self.get_total_cost(),
             'cost_per_player': self.get_cost_per_player()
+        }
+
+
+class Court(db.Model):
+    __tablename__ = 'courts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=False)
+    name = db.Column(db.String(50), default='Court')  # e.g., "Court 1", "Court A"
+    start_time = db.Column(db.String(20), nullable=False)  # "6:30 AM"
+    end_time = db.Column(db.String(20), nullable=False)    # "9:30 AM"
+    cost = db.Column(db.Float, nullable=False, default=0)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'session_id': self.session_id,
+            'name': self.name,
+            'start_time': self.start_time,
+            'end_time': self.end_time,
+            'cost': self.cost
         }
 
 

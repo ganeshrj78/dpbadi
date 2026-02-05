@@ -11,6 +11,7 @@
     </a>
 </div>
 
+{% set start_time, end_time = session.get_time_range() %}
 <!-- Page Header -->
 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
     <div class="flex items-center space-x-4">
@@ -20,7 +21,7 @@
         </div>
         <div>
             <h1 class="text-3xl font-serif font-bold text-wimbledon-purple">{{ session.date.strftime('%B %d, %Y') }}</h1>
-            <p class="text-gray-500">{{ session.date.strftime('%A') }} | {{ session.start_time }} - {{ session.end_time }}</p>
+            <p class="text-gray-500">{{ session.date.strftime('%A') }} | {{ start_time }} - {{ end_time }}</p>
         </div>
     </div>
     <div class="flex space-x-3">
@@ -38,7 +39,7 @@
 </div>
 
 <!-- Session Summary Cards -->
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
     <div class="bg-white rounded-2xl shadow-lg p-5 border border-wimbledon-gold/20 card-hover transition-all">
         <div class="flex items-center space-x-3 mb-3">
             <div class="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center">
@@ -46,7 +47,10 @@
             </div>
             <span class="text-sm font-medium text-gray-500">Courts</span>
         </div>
-        <div class="text-3xl font-bold text-gray-800">{{ session.courts }}</div>
+        <div class="text-3xl font-bold text-gray-800">{{ session.get_court_count() }}</div>
+        {% if session.get_attendee_count() > 0 %}
+        <div class="text-xs text-gray-400 mt-1">Suggested: {{ session.get_suggested_courts() }}</div>
+        {% endif %}
     </div>
 
     <div class="bg-white rounded-2xl shadow-lg p-5 border border-wimbledon-gold/20 card-hover transition-all">
@@ -80,6 +84,36 @@
         <div class="text-xs text-gray-400 mt-1">incl. ${{ "%.2f"|format(session.birdie_cost) }} birdie</div>
     </div>
 </div>
+
+<!-- Courts Line Items -->
+{% if session.courts.count() > 0 %}
+<div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 mb-6 overflow-hidden">
+    <div class="px-6 py-4 border-b border-wimbledon-gold/20 bg-gradient-to-r from-wimbledon-cream to-white">
+        <h2 class="text-lg font-serif font-bold text-gray-800 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-wimbledon-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+            </svg>
+            Court Reservations
+        </h2>
+    </div>
+    <div class="divide-y divide-gray-100">
+        {% for court in session.courts.all() %}
+        <div class="px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-wimbledon-purple/10 rounded-lg flex items-center justify-center">
+                    <span class="text-wimbledon-purple font-bold">{{ loop.index }}</span>
+                </div>
+                <div>
+                    <div class="font-medium text-gray-800">{{ court.name }}</div>
+                    <div class="text-sm text-gray-500">{{ court.start_time }} - {{ court.end_time }}</div>
+                </div>
+            </div>
+            <div class="text-lg font-bold text-wimbledon-purple">${{ "%.2f"|format(court.cost) }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
 
 {% if session.notes %}
 <div class="bg-gradient-to-r from-wimbledon-gold/10 to-wimbledon-cream border-2 border-wimbledon-gold/40 rounded-2xl p-5 mb-8">

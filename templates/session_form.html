@@ -3,7 +3,7 @@
 {% block title %}{% if session %}Edit Session{% else %}New Session{% endif %} - BP Badminton{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto">
+<div class="max-w-3xl mx-auto" x-data="sessionForm()">
     <!-- Back Link -->
     <div class="mb-6">
         <a href="{{ url_for('sessions') }}" class="inline-flex items-center text-wimbledon-purple hover:text-wimbledon-purple-light font-medium transition-all">
@@ -24,63 +24,13 @@
 
     <div class="bg-white rounded-2xl shadow-lg p-8 border border-wimbledon-gold/20">
         <form method="POST" class="space-y-6">
+            <!-- Date and Birdie Cost -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label for="date" class="block text-sm font-semibold text-gray-700 mb-2">Date *</label>
                     <input type="date" name="date" id="date" required
                         value="{{ session.date.strftime('%Y-%m-%d') if session else '' }}"
                         class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all">
-                </div>
-
-                <div>
-                    <label for="courts" class="block text-sm font-semibold text-gray-700 mb-2">Number of Courts *</label>
-                    <input type="number" name="courts" id="courts" required min="1" max="10"
-                        value="{{ session.courts if session else '2' }}"
-                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all">
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label for="start_time" class="block text-sm font-semibold text-gray-700 mb-2">Start Time *</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <svg class="w-5 h-5 text-wimbledon-purple/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
-                        <input type="text" name="start_time" id="start_time" required placeholder="6:30 AM"
-                            value="{{ session.start_time if session else '6:30 AM' }}"
-                            class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all">
-                    </div>
-                </div>
-
-                <div>
-                    <label for="end_time" class="block text-sm font-semibold text-gray-700 mb-2">End Time *</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <svg class="w-5 h-5 text-wimbledon-purple/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
-                        <input type="text" name="end_time" id="end_time" required placeholder="9:30 AM"
-                            value="{{ session.end_time if session else '9:30 AM' }}"
-                            class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all">
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label for="court_cost" class="block text-sm font-semibold text-gray-700 mb-2">Cost per Court ($)</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <span class="text-wimbledon-gold font-medium">$</span>
-                        </div>
-                        <input type="number" name="court_cost" id="court_cost" step="0.01" min="0"
-                            value="{{ session.court_cost if session else '30' }}"
-                            class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all">
-                    </div>
                 </div>
 
                 <div>
@@ -93,6 +43,75 @@
                             value="{{ session.birdie_cost if session else '2' }}"
                             class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all">
                     </div>
+                </div>
+            </div>
+
+            <!-- Suggested Courts Info -->
+            {% if session and session.get_attendee_count() > 0 %}
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div class="flex items-center gap-2 text-blue-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span class="font-medium">{{ session.get_attendee_count() }} players confirmed</span>
+                    <span class="text-blue-600">→ Suggested: {{ session.get_suggested_courts() }} court(s)</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Courts Section -->
+            <div class="border-t border-gray-200 pt-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-wimbledon-purple flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        Courts
+                    </h3>
+                    <button type="button" @click="addCourt()" class="text-sm px-3 py-1.5 bg-wimbledon-green text-white rounded-lg hover:bg-wimbledon-green-dark transition-all flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        Add Court
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <template x-for="(court, index) in courts" :key="index">
+                        <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="font-medium text-gray-700" x-text="'Court ' + (index + 1)"></span>
+                                <button type="button" @click="removeCourt(index)" x-show="courts.length > 1" class="text-red-500 hover:text-red-700 p-1">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">Name</label>
+                                    <input type="text" :name="'court_name_' + index" x-model="court.name" placeholder="Court 1"
+                                        class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-wimbledon-green">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">Start Time</label>
+                                    <input type="text" :name="'court_start_' + index" x-model="court.start_time" placeholder="6:30 AM" required
+                                        class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-wimbledon-green">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">End Time</label>
+                                    <input type="text" :name="'court_end_' + index" x-model="court.end_time" placeholder="9:30 AM" required
+                                        class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-wimbledon-green">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">Cost ($)</label>
+                                    <input type="number" :name="'court_cost_' + index" x-model="court.cost" step="0.01" min="0" required
+                                        class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-wimbledon-green">
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Hidden field to store court count -->
+                <input type="hidden" name="court_count" :value="courts.length">
+
+                <!-- Total Cost Summary -->
+                <div class="mt-4 bg-wimbledon-cream rounded-xl p-4 flex items-center justify-between">
+                    <span class="font-medium text-gray-700">Total Court Cost:</span>
+                    <span class="text-xl font-bold text-wimbledon-purple" x-text="'$' + totalCost.toFixed(2)"></span>
                 </div>
             </div>
 
@@ -114,4 +133,35 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function sessionForm() {
+    return {
+        courts: [
+            {% if session and session.courts.count() > 0 %}
+                {% for court in session.courts.all() %}
+                { name: '{{ court.name }}', start_time: '{{ court.start_time }}', end_time: '{{ court.end_time }}', cost: {{ court.cost }} },
+                {% endfor %}
+            {% else %}
+                { name: 'Court 1', start_time: '6:30 AM', end_time: '9:30 AM', cost: 30 },
+                { name: 'Court 2', start_time: '6:30 AM', end_time: '9:30 AM', cost: 30 }
+            {% endif %}
+        ],
+        get totalCost() {
+            return this.courts.reduce((sum, court) => sum + (parseFloat(court.cost) || 0), 0);
+        },
+        addCourt() {
+            const num = this.courts.length + 1;
+            this.courts.push({ name: 'Court ' + num, start_time: '6:30 AM', end_time: '9:30 AM', cost: 30 });
+        },
+        removeCourt(index) {
+            if (this.courts.length > 1) {
+                this.courts.splice(index, 1);
+            }
+        }
+    }
+}
+</script>
 {% endblock %}

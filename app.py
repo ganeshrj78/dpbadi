@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from functools import wraps
 from datetime import datetime, date
 from config import Config
-from models import db, Player, Session, Attendance, Payment
+from models import db, Player, Session, Court, Attendance, Payment
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -414,26 +414,35 @@ def sessions():
 def add_session():
     if request.method == 'POST':
         date_str = request.form.get('date')
-        start_time = request.form.get('start_time')
-        end_time = request.form.get('end_time')
-        courts = int(request.form.get('courts', 1))
-        court_cost = float(request.form.get('court_cost', 0))
         birdie_cost = float(request.form.get('birdie_cost', 0))
         notes = request.form.get('notes')
+        court_count = int(request.form.get('court_count', 1))
 
         session_date = datetime.strptime(date_str, '%Y-%m-%d').date()
 
         new_session = Session(
             date=session_date,
-            start_time=start_time,
-            end_time=end_time,
-            courts=courts,
-            court_cost=court_cost,
             birdie_cost=birdie_cost,
             notes=notes
         )
         db.session.add(new_session)
-        db.session.commit()
+        db.session.flush()  # Get the session ID
+
+        # Add courts
+        for i in range(court_count):
+            court_name = request.form.get(f'court_name_{i}', f'Court {i+1}')
+            court_start = request.form.get(f'court_start_{i}', '6:30 AM')
+            court_end = request.form.get(f'court_end_{i}', '9:30 AM')
+            court_cost = float(request.form.get(f'court_cost_{i}', 30))
+
+            court = Court(
+                session_id=new_session.id,
+                name=court_name,
+                start_time=court_start,
+                end_time=court_end,
+                cost=court_cost
+            )
+            db.session.add(court)
 
         # Create attendance records for all players (default NO, category from player)
         players = Player.query.all()
@@ -480,12 +489,29 @@ def edit_session(id):
 
     if request.method == 'POST':
         sess.date = datetime.strptime(request.form.get('date'), '%Y-%m-%d').date()
-        sess.start_time = request.form.get('start_time')
-        sess.end_time = request.form.get('end_time')
-        sess.courts = int(request.form.get('courts', 1))
-        sess.court_cost = float(request.form.get('court_cost', 0))
         sess.birdie_cost = float(request.form.get('birdie_cost', 0))
         sess.notes = request.form.get('notes')
+        court_count = int(request.form.get('court_count', 1))
+
+        # Delete existing courts and recreate
+        Court.query.filter_by(session_id=id).delete()
+
+        # Add courts
+        for i in range(court_count):
+            court_name = request.form.get(f'court_name_{i}', f'Court {i+1}')
+            court_start = request.form.get(f'court_start_{i}', '6:30 AM')
+            court_end = request.form.get(f'court_end_{i}', '9:30 AM')
+            court_cost = float(request.form.get(f'court_cost_{i}', 30))
+
+            court = Court(
+                session_id=id,
+                name=court_name,
+                start_time=court_start,
+                end_time=court_end,
+                cost=court_cost
+            )
+            db.session.add(court)
+
         db.session.commit()
         flash('Session updated successfully!', 'success')
         return redirect(url_for('session_detail', id=id))
