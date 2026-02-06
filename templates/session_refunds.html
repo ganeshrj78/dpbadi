@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Dropout Refunds - {{ session.date.strftime('%b %d, %Y') }} - BP Badminton{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Back Link -->
+    <div class="mb-6">
+        <a href="{{ url_for('session_detail', id=session.id) }}" class="inline-flex items-center text-wimbledon-purple hover:text-wimbledon-purple-light font-medium transition-all">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            Back to Session
+        </a>
+    </div>
+
+    <!-- Header -->
+    <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 gradient-warning rounded-2xl shadow-lg mb-4 border-2 border-wimbledon-gold/30">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+            </svg>
+        </div>
+        <h1 class="text-3xl font-serif font-bold text-wimbledon-purple">Dropout Refunds</h1>
+        <p class="text-gray-500 mt-1">{{ session.date.strftime('%B %d, %Y') }} - Manage refunds for players who dropped out</p>
+    </div>
+
+    <!-- Session Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow p-4 border border-wimbledon-gold/20 text-center">
+            <div class="text-2xl font-bold text-wimbledon-purple">{{ session.get_attendee_count() }}</div>
+            <div class="text-xs text-gray-500">Attendees</div>
+        </div>
+        <div class="bg-white rounded-xl shadow p-4 border border-wimbledon-gold/20 text-center">
+            <div class="text-2xl font-bold text-red-600">{{ dropouts|length }}</div>
+            <div class="text-xs text-gray-500">Dropouts</div>
+        </div>
+        <div class="bg-white rounded-xl shadow p-4 border border-wimbledon-gold/20 text-center">
+            <div class="text-2xl font-bold text-blue-600">{{ fillins|length }}</div>
+            <div class="text-xs text-gray-500">Fill-ins</div>
+        </div>
+        <div class="bg-white rounded-xl shadow p-4 border border-wimbledon-gold/20 text-center">
+            <div class="text-2xl font-bold text-wimbledon-green">${{ '%.2f'|format(session.get_cost_per_player()) }}</div>
+            <div class="text-xs text-gray-500">Per Player</div>
+        </div>
+    </div>
+
+    <!-- Suggested Refund Info -->
+    <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 mb-6">
+        <div class="flex items-start gap-3">
+            <svg class="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div>
+                <div class="font-semibold text-blue-800">Suggested Refund: ${{ '%.2f'|format(suggested_refund) }}</div>
+                <p class="text-sm text-blue-700 mt-1">
+                    {% if fillins|length >= dropouts|length and fillins|length > 0 %}
+                    Full refund suggested since fill-ins ({{ fillins|length }}) covered the dropout spots.
+                    {% else %}
+                    Partial refund based on court cost share. Birdie cost (${{ '%.2f'|format(session.birdie_cost) }}) is typically not refunded.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dropouts List -->
+    {% if dropouts %}
+    <div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 mb-6 overflow-hidden">
+        <div class="px-6 py-4 border-b border-wimbledon-gold/20 bg-gradient-to-r from-red-50 to-white">
+            <h2 class="text-lg font-serif font-bold text-gray-800 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6"></path>
+                </svg>
+                Players Who Dropped Out
+            </h2>
+        </div>
+        <div class="divide-y divide-gray-100">
+            {% for att in dropouts %}
+            {% set existing_refund = refund_map.get(att.player_id) %}
+            <div class="p-4" x-data="{ showForm: {{ 'true' if not existing_refund else 'false' }} }">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 gradient-primary rounded-full flex items-center justify-center text-white font-bold shadow">
+                            {{ att.player.name[0].upper() }}
+                        </div>
+                        <div>
+                            <div class="font-semibold text-gray-800">{{ att.player.name }}</div>
+                            <div class="text-sm text-gray-500">{{ att.player.email or att.player.phone or 'No contact' }}</div>
+                        </div>
+                    </div>
+
+                    {% if existing_refund %}
+                    <!-- Existing Refund -->
+                    <div class="flex flex-col md:flex-row md:items-center gap-3">
+                        <div class="text-right">
+                            <div class="text-lg font-bold {% if existing_refund.status == 'processed' %}text-wimbledon-green{% elif existing_refund.status == 'cancelled' %}text-gray-400 line-through{% else %}text-wimbledon-purple{% endif %}">
+                                ${{ '%.2f'|format(existing_refund.refund_amount) }}
+                            </div>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                                {% if existing_refund.status == 'pending' %}bg-yellow-100 text-yellow-800
+                                {% elif existing_refund.status == 'processed' %}bg-green-100 text-green-800
+                                {% else %}bg-gray-100 text-gray-600{% endif %}">
+                                {{ existing_refund.status|capitalize }}
+                            </span>
+                        </div>
+
+                        {% if existing_refund.status == 'pending' %}
+                        <div class="flex gap-2">
+                            <button @click="showForm = !showForm" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
+                                Edit
+                            </button>
+                            <form method="POST" action="{{ url_for('update_dropout_refund', id=existing_refund.id) }}" class="inline">
+                                <input type="hidden" name="action" value="process">
+                                <button type="submit" class="px-3 py-1.5 text-sm bg-wimbledon-green text-white rounded-lg hover:bg-wimbledon-green-dark">
+                                    Process
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('update_dropout_refund', id=existing_refund.id) }}" class="inline">
+                                <input type="hidden" name="action" value="cancel">
+                                <button type="submit" class="px-3 py-1.5 text-sm border border-red-300 text-red-600 rounded-lg hover:bg-red-50">
+                                    Cancel
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <button @click="showForm = !showForm" class="px-4 py-2 btn-primary text-white rounded-lg text-sm">
+                        Create Refund
+                    </button>
+                    {% endif %}
+                </div>
+
+                {% if existing_refund and existing_refund.instructions %}
+                <div class="mt-3 p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
+                    <strong>Instructions:</strong> {{ existing_refund.instructions }}
+                </div>
+                {% endif %}
+
+                <!-- Refund Form -->
+                <div x-show="showForm" x-collapse class="mt-4 p-4 bg-gray-50 rounded-xl">
+                    <form method="POST" action="{% if existing_refund %}{{ url_for('update_dropout_refund', id=existing_refund.id) }}{% else %}{{ url_for('add_dropout_refund', id=session.id) }}{% endif %}">
+                        {% if existing_refund %}
+                        <input type="hidden" name="action" value="update">
+                        {% else %}
+                        <input type="hidden" name="player_id" value="{{ att.player_id }}">
+                        {% endif %}
+
+                        <div class="grid md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">Refund Amount ($)</label>
+                                <div class="flex gap-2">
+                                    <input type="number" step="0.01" name="refund_amount" required
+                                        value="{{ existing_refund.refund_amount if existing_refund else suggested_refund }}"
+                                        class="flex-1 px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-purple focus:ring-4 focus:ring-wimbledon-purple/20">
+                                    <button type="button" onclick="this.previousElementSibling.value = {{ suggested_refund }}"
+                                        class="px-3 py-2 text-sm border border-blue-300 text-blue-600 rounded-xl hover:bg-blue-50">
+                                        Use Suggested
+                                    </button>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Suggested: ${{ '%.2f'|format(suggested_refund) }}</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">Instructions / Notes</label>
+                                <input type="text" name="instructions"
+                                    value="{{ existing_refund.instructions if existing_refund else '' }}"
+                                    placeholder="e.g., Refund via Zelle, partial due to late notice"
+                                    class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-purple focus:ring-4 focus:ring-wimbledon-purple/20">
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end gap-2">
+                            <button type="button" @click="showForm = false" class="px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-100">
+                                Cancel
+                            </button>
+                            <button type="submit" class="px-4 py-2 btn-success text-white rounded-xl">
+                                {% if existing_refund %}Update Refund{% else %}Create Refund{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl shadow-lg p-8 border border-wimbledon-gold/20 text-center">
+        <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <p class="text-gray-500">No dropouts for this session. Everyone showed up!</p>
+    </div>
+    {% endif %}
+
+    <!-- Fill-ins List -->
+    {% if fillins %}
+    <div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 overflow-hidden">
+        <div class="px-6 py-4 border-b border-wimbledon-gold/20 bg-gradient-to-r from-blue-50 to-white">
+            <h2 class="text-lg font-serif font-bold text-gray-800 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                </svg>
+                Fill-in Players
+            </h2>
+        </div>
+        <div class="divide-y divide-gray-100">
+            {% for att in fillins %}
+            <div class="p-4 flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
+                    {{ att.player.name[0].upper() }}
+                </div>
+                <div>
+                    <div class="font-semibold text-gray-800">{{ att.player.name }}</div>
+                    <div class="text-sm text-gray-500">Filled in for this session</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

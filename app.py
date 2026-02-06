@@ -5,7 +5,7 @@ from werkzeug.utils import secure_filename
 import os
 import uuid
 from config import Config
-from models import db, Player, Session, Court, Attendance, Payment, BirdieBank
+from models import db, Player, Session, Court, Attendance, Payment, BirdieBank, DropoutRefund
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -727,6 +727,111 @@ def toggle_voting_freeze(id):
     status = 'frozen' if sess.voting_frozen else 'unfrozen'
     flash(f'Voting {status} for this session!', 'success')
     return redirect(url_for('session_detail', id=id))
+
+
+# Dropout Refund routes
+@app.route('/sessions/<int:id>/refunds')
+@admin_required
+def session_refunds(id):
+    sess = Session.query.get_or_404(id)
+
+    # Get all dropouts for this session
+    dropouts = Attendance.query.filter_by(session_id=id, status='DROPOUT').all()
+    fillins = Attendance.query.filter_by(session_id=id, status='FILLIN').all()
+
+    # Get existing refunds
+    refunds = DropoutRefund.query.filter_by(session_id=id).all()
+    refund_map = {r.player_id: r for r in refunds}
+
+    # Calculate suggested refund
+    suggested_refund = sess.calculate_suggested_refund()
+
+    return render_template('session_refunds.html',
+                         session=sess,
+                         dropouts=dropouts,
+                         fillins=fillins,
+                         refunds=refunds,
+                         refund_map=refund_map,
+                         suggested_refund=suggested_refund)
+
+
+@app.route('/sessions/<int:id>/refunds/add', methods=['POST'])
+@admin_required
+def add_dropout_refund(id):
+    sess = Session.query.get_or_404(id)
+    player_id = int(request.form.get('player_id'))
+    refund_amount = float(request.form.get('refund_amount', 0))
+    instructions = request.form.get('instructions', '').strip()
+
+    # Check if refund already exists
+    existing = DropoutRefund.query.filter_by(session_id=id, player_id=player_id).first()
+    if existing:
+        flash('Refund already exists for this player. Edit the existing one.', 'error')
+        return redirect(url_for('session_refunds', id=id))
+
+    suggested_amount = sess.calculate_suggested_refund()
+
+    refund = DropoutRefund(
+        player_id=player_id,
+        session_id=id,
+        refund_amount=refund_amount,
+        suggested_amount=suggested_amount,
+        instructions=instructions,
+        status='pending'
+    )
+    db.session.add(refund)
+    db.session.commit()
+
+    player = Player.query.get(player_id)
+    flash(f'Refund of ${refund_amount:.2f} created for {player.name}', 'success')
+    return redirect(url_for('session_refunds', id=id))
+
+
+@app.route('/refunds/<int:id>/update', methods=['POST'])
+@admin_required
+def update_dropout_refund(id):
+    refund = DropoutRefund.query.get_or_404(id)
+    session_id = refund.session_id
+
+    action = request.form.get('action')
+
+    if action == 'update':
+        refund.refund_amount = float(request.form.get('refund_amount', refund.refund_amount))
+        refund.instructions = request.form.get('instructions', '').strip()
+        flash('Refund updated successfully!', 'success')
+
+    elif action == 'process':
+        refund.status = 'processed'
+        refund.processed_date = datetime.utcnow()
+
+        # Create a negative payment (credit) for the player
+        payment = Payment(
+            player_id=refund.player_id,
+            amount=-refund.refund_amount,  # Negative amount = credit/refund
+            method='Refund',
+            date=datetime.utcnow(),
+            notes=f'Dropout refund for session {refund.session.date.strftime("%b %d, %Y")}. {refund.instructions or ""}'.strip()
+        )
+        db.session.add(payment)
+        flash(f'Refund of ${refund.refund_amount:.2f} processed and credited to {refund.player.name}', 'success')
+
+    elif action == 'cancel':
+        refund.status = 'cancelled'
+        flash('Refund cancelled', 'success')
+
+    db.session.commit()
+    return redirect(url_for('session_refunds', id=session_id))
+
+
+@app.route('/refunds/<int:id>/delete', methods=['POST'])
+@admin_required
+def delete_dropout_refund(id):
+    refund = DropoutRefund.query.get_or_404(id)
+    session_id = refund.session_id
+    db.session.delete(refund)
+    db.session.commit()
+    flash('Refund deleted successfully!', 'success')
+    return redirect(url_for('session_refunds', id=session_id))
 
 
 # Attendance API

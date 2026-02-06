@@ -67,6 +67,29 @@ def migrate_sqlite(db_path):
     else:
         print("  - 'birdie_bank' table already exists")
 
+    # Check if dropout_refunds table exists
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='dropout_refunds'")
+    if not cursor.fetchone():
+        cursor.execute('''
+            CREATE TABLE dropout_refunds (
+                id INTEGER PRIMARY KEY,
+                player_id INTEGER NOT NULL REFERENCES players(id),
+                session_id INTEGER NOT NULL REFERENCES sessions(id),
+                refund_amount FLOAT NOT NULL DEFAULT 0,
+                suggested_amount FLOAT DEFAULT 0,
+                instructions TEXT,
+                status VARCHAR(20) DEFAULT 'pending',
+                processed_date DATETIME,
+                created_by INTEGER REFERENCES players(id),
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_by INTEGER REFERENCES players(id),
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        print("  - Created 'dropout_refunds' table")
+    else:
+        print("  - 'dropout_refunds' table already exists")
+
     conn.commit()
     conn.close()
     print("SQLite migration completed!")
@@ -120,6 +143,32 @@ def migrate_postgresql(database_url):
         print("  - Created 'birdie_bank' table")
     else:
         print("  - 'birdie_bank' table already exists")
+
+    # Check if dropout_refunds table exists
+    cursor.execute("""
+        SELECT table_name FROM information_schema.tables
+        WHERE table_name = 'dropout_refunds'
+    """)
+    if not cursor.fetchone():
+        cursor.execute('''
+            CREATE TABLE dropout_refunds (
+                id SERIAL PRIMARY KEY,
+                player_id INTEGER NOT NULL REFERENCES players(id),
+                session_id INTEGER NOT NULL REFERENCES sessions(id),
+                refund_amount FLOAT NOT NULL DEFAULT 0,
+                suggested_amount FLOAT DEFAULT 0,
+                instructions TEXT,
+                status VARCHAR(20) DEFAULT 'pending',
+                processed_date TIMESTAMP,
+                created_by INTEGER REFERENCES players(id),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_by INTEGER REFERENCES players(id),
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        print("  - Created 'dropout_refunds' table")
+    else:
+        print("  - 'dropout_refunds' table already exists")
 
     conn.commit()
     conn.close()

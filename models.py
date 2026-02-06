@@ -135,6 +135,36 @@ class Session(db.Model):
         court_cost_per_player = self.get_total_cost() / attendee_count
         return round(court_cost_per_player + self.birdie_cost, 2)
 
+    def get_dropout_count(self):
+        """Count players who dropped out"""
+        return self.attendances.filter_by(status='DROPOUT').count()
+
+    def get_fillin_count(self):
+        """Count fill-in players"""
+        return self.attendances.filter_by(status='FILLIN').count()
+
+    def calculate_suggested_refund(self):
+        """
+        Calculate suggested refund amount for a dropout.
+        Logic:
+        - If there are fill-ins >= dropouts, suggest full refund (someone took their spot)
+        - Otherwise, suggest partial refund (cost per player minus birdie cost)
+        """
+        fillin_count = self.get_fillin_count()
+        dropout_count = self.get_dropout_count()
+
+        if fillin_count >= dropout_count and fillin_count > 0:
+            # Full refund possible since fill-ins covered the spots
+            return self.get_cost_per_player()
+        else:
+            # Partial refund - they still used some resources (birdie cost is sunk)
+            # Refund the court cost portion only
+            attendee_count = self.get_attendee_count()
+            if attendee_count > 0:
+                court_cost_per_player = self.get_total_cost() / attendee_count
+                return round(court_cost_per_player, 2)
+            return 0
+
     def to_dict(self):
         start_time, end_time = self.get_time_range()
         return {
@@ -231,6 +261,42 @@ class Payment(db.Model):
             'method': self.method,
             'date': self.date.isoformat(),
             'notes': self.notes
+        }
+
+
+class DropoutRefund(db.Model):
+    """Track refunds for players who drop out of sessions"""
+    __tablename__ = 'dropout_refunds'
+
+    id = db.Column(db.Integer, primary_key=True)
+    player_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=False)
+    session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=False)
+    refund_amount = db.Column(db.Float, nullable=False, default=0)
+    suggested_amount = db.Column(db.Float, default=0)  # System-calculated suggestion
+    instructions = db.Column(db.Text)  # Admin instructions/notes
+    status = db.Column(db.String(20), default='pending')  # pending, processed, cancelled
+    processed_date = db.Column(db.DateTime, nullable=True)
+
+    # Audit fields
+    created_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    player = db.relationship('Player', foreign_keys=[player_id], backref='dropout_refunds')
+    session = db.relationship('Session', backref='dropout_refunds')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'player_id': self.player_id,
+            'player_name': self.player.name if self.player else None,
+            'session_id': self.session_id,
+            'refund_amount': self.refund_amount,
+            'suggested_amount': self.suggested_amount,
+            'instructions': self.instructions,
+            'status': self.status,
+            'processed_date': self.processed_date.isoformat() if self.processed_date else None
         }
 
 
