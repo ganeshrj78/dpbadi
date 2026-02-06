@@ -27,7 +27,7 @@
         {% if upcoming_sessions %}
         <div class="space-y-6">
             {% for sess in upcoming_sessions %}
-            <div class="border border-gray-200 rounded-xl p-4 hover:border-wimbledon-green/50 transition-all" x-data="{ status: '{{ attendance_map.get(sess.id, 'NO') }}', showPlayers: false }">
+            <div class="border border-gray-200 rounded-xl p-4 hover:border-wimbledon-green/50 transition-all" x-data="{ showPlayers: false }">
                 <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div class="flex-1">
                         {% set start_time, end_time = sess.get_time_range() %}
@@ -54,21 +54,44 @@
                         {% endif %}
                     </div>
 
-                    <!-- Attendance Dropdown -->
-                    <div>
-                        <select
-                            @change="updateAttendance({{ sess.id }}, $event.target.value, $event.target)"
-                            x-model="status"
-                            :class="{
-                                'bg-green-100 border-green-300 text-green-700': status === 'YES',
-                                'bg-gray-100 border-gray-300 text-gray-600': status === 'NO',
-                                'bg-yellow-100 border-yellow-300 text-yellow-700': status === 'TENTATIVE'
-                            }"
-                            class="px-4 py-2 rounded-lg font-bold text-sm border-2 cursor-pointer transition-all">
-                            <option value="YES">Yes</option>
-                            <option value="NO">No</option>
-                            <option value="TENTATIVE">Maybe</option>
-                        </select>
+                    <!-- Attendance Dropdowns for self and managed players -->
+                    <div class="flex flex-col gap-2">
+                        <!-- Self -->
+                        <div class="flex items-center gap-2" x-data="{ status: '{{ attendance_map.get(player.id, {}).get(sess.id, 'NO') }}' }">
+                            <span class="text-sm font-medium text-gray-600 w-20 truncate">You:</span>
+                            <select
+                                @change="updateAttendance({{ sess.id }}, {{ player.id }}, $event.target.value)"
+                                x-model="status"
+                                :class="{
+                                    'bg-green-100 border-green-300 text-green-700': status === 'YES',
+                                    'bg-gray-100 border-gray-300 text-gray-600': status === 'NO',
+                                    'bg-yellow-100 border-yellow-300 text-yellow-700': status === 'TENTATIVE'
+                                }"
+                                class="px-3 py-1.5 rounded-lg font-bold text-sm border-2 cursor-pointer transition-all">
+                                <option value="YES">Yes</option>
+                                <option value="NO">No</option>
+                                <option value="TENTATIVE">Maybe</option>
+                            </select>
+                        </div>
+                        <!-- Managed Players -->
+                        {% for mp in managed_players %}
+                        <div class="flex items-center gap-2" x-data="{ status: '{{ attendance_map.get(mp.id, {}).get(sess.id, 'NO') }}' }">
+                            <span class="text-sm font-medium text-gray-500 w-20 truncate" title="{{ mp.name }}">{{ mp.name.split()[0] }}:</span>
+                            <select
+                                @change="updateAttendance({{ sess.id }}, {{ mp.id }}, $event.target.value)"
+                                x-model="status"
+                                :class="{
+                                    'bg-green-100 border-green-300 text-green-700': status === 'YES',
+                                    'bg-gray-100 border-gray-300 text-gray-600': status === 'NO',
+                                    'bg-yellow-100 border-yellow-300 text-yellow-700': status === 'TENTATIVE'
+                                }"
+                                class="px-3 py-1.5 rounded-lg font-bold text-sm border-2 cursor-pointer transition-all">
+                                <option value="YES">Yes</option>
+                                <option value="NO">No</option>
+                                <option value="TENTATIVE">Maybe</option>
+                            </select>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
 
@@ -193,7 +216,7 @@
 
 {% block scripts %}
 <script>
-async function updateAttendance(sessionId, status, button) {
+async function updateAttendance(sessionId, playerId, status) {
     try {
         const response = await fetch('/api/player/attendance', {
             method: 'POST',
@@ -202,6 +225,7 @@ async function updateAttendance(sessionId, status, button) {
             },
             body: JSON.stringify({
                 session_id: sessionId,
+                player_id: playerId,
                 status: status
             })
         });
@@ -209,18 +233,11 @@ async function updateAttendance(sessionId, status, button) {
         const data = await response.json();
 
         if (data.success) {
-            // Update the Alpine.js state
-            const container = button.closest('[x-data]');
-            if (container && container.__x) {
-                container.__x.$data.status = status;
-            }
-
             // Update attendee count and cost
             document.getElementById('count-' + sessionId).textContent = data.attendee_count;
             document.getElementById('cost-value-' + sessionId).textContent = data.cost_per_player.toFixed(2);
 
-            // Refresh page to update player list (simple approach)
-            // For a better UX, you could update the specific player's status dynamically
+            // Refresh page to update player list
             location.reload();
         }
     } catch (error) {

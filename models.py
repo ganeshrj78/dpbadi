@@ -15,6 +15,8 @@ class Player(db.Model):
     email = db.Column(db.String(100))
     password_hash = db.Column(db.String(255))
     zelle_preference = db.Column(db.String(10), default='email')  # 'email' or 'phone'
+    profile_photo = db.Column(db.String(255))  # filename of uploaded photo
+    managed_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)  # Parent player who can vote/pay for this player
     is_admin = db.Column(db.Boolean, default=False)  # Player admin flag
     is_active = db.Column(db.Boolean, default=True)  # Active/Inactive status
 
@@ -26,6 +28,9 @@ class Player(db.Model):
 
     attendances = db.relationship('Attendance', backref='player', lazy='dynamic', cascade='all, delete-orphan', foreign_keys='Attendance.player_id')
     payments = db.relationship('Payment', backref='player', lazy='dynamic', cascade='all, delete-orphan', foreign_keys='Payment.player_id')
+
+    # Managed players relationship (players this player can vote/pay for)
+    managed_players = db.relationship('Player', backref=db.backref('manager', remote_side=[id]), foreign_keys=[managed_by])
 
     def set_password(self, password):
         """Set password hash from plain text password"""

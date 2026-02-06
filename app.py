@@ -1,11 +1,38 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from functools import wraps
 from datetime import datetime, date
+from werkzeug.utils import secure_filename
+import os
+import uuid
 from config import Config
 from models import db, Player, Session, Court, Attendance, Payment
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# File upload configuration
+UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max
+
+# Ensure upload folder exists
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def save_profile_photo(file):
+    """Save uploaded profile photo and return filename"""
+    if file and allowed_file(file.filename):
+        # Generate unique filename
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        filename = f"{uuid.uuid4().hex}.{ext}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        return filename
+    return None
+
 db.init_app(app)
 
 # Create tables
@@ -164,6 +191,23 @@ def player_profile():
                 db.session.commit()
                 flash('Password changed successfully!', 'success')
 
+        elif action == 'update_photo':
+            if 'profile_photo' in request.files:
+                file = request.files['profile_photo']
+                if file and file.filename:
+                    # Delete old photo if exists
+                    if player.profile_photo:
+                        old_path = os.path.join(app.config['UPLOAD_FOLDER'], player.profile_photo)
+                        if os.path.exists(old_path):
+                            os.remove(old_path)
+                    filename = save_profile_photo(file)
+                    if filename:
+                        player.profile_photo = filename
+                        db.session.commit()
+                        flash('Profile photo updated!', 'success')
+                    else:
+                        flash('Invalid file type. Please upload an image (PNG, JPG, GIF, WEBP).', 'error')
+
         return redirect(url_for('player_profile'))
 
     # Get attendance history
@@ -182,6 +226,9 @@ def player_sessions():
 
     player_id = session.get('player_id')
     player = Player.query.get_or_404(player_id)
+
+    # Get managed players (spouse, kids, etc.)
+    managed_players = player.managed_players
 
     # Get upcoming sessions (not archived, future dates)
     upcoming_sessions = Session.query.filter(
@@ -204,10 +251,13 @@ def player_sessions():
     # Sort by key (year-month) descending
     archived_sorted = sorted(archived_grouped.items(), key=lambda x: x[0], reverse=True)
 
-    # Get attendance map for this player
-    attendance_map = {}
-    for att in Attendance.query.filter_by(player_id=player_id).all():
-        attendance_map[att.session_id] = att.status
+    # Get attendance map for this player and managed players
+    attendance_map = {}  # {player_id: {session_id: status}}
+    players_to_track = [player] + list(managed_players)
+    for p in players_to_track:
+        attendance_map[p.id] = {}
+        for att in Attendance.query.filter_by(player_id=p.id).all():
+            attendance_map[p.id][att.session_id] = att.status
 
     # Get all players for showing attendance
     all_players = Player.query.order_by(Player.name).all()
@@ -220,17 +270,19 @@ def player_sessions():
         for att in sess.attendances.all():
             session_attendance[sess.id][att.player_id] = att.status
 
-    # Ensure current player has attendance records for upcoming sessions
+    # Ensure current player and managed players have attendance records for upcoming sessions
     for sess in upcoming_sessions:
-        if sess.id not in attendance_map:
-            attendance = Attendance(player_id=player_id, session_id=sess.id, status='NO')
-            db.session.add(attendance)
-            attendance_map[sess.id] = 'NO'
-            session_attendance[sess.id][player_id] = 'NO'
+        for p in players_to_track:
+            if sess.id not in attendance_map[p.id]:
+                attendance = Attendance(player_id=p.id, session_id=sess.id, status='NO')
+                db.session.add(attendance)
+                attendance_map[p.id][sess.id] = 'NO'
+                session_attendance[sess.id][p.id] = 'NO'
     db.session.commit()
 
     return render_template('player_sessions.html',
                          player=player,
+                         managed_players=managed_players,
                          upcoming_sessions=upcoming_sessions,
                          archived_groups=archived_sorted,
                          attendance_map=attendance_map,
@@ -238,7 +290,7 @@ def player_sessions():
                          session_attendance=session_attendance)
 
 
-# Player payment - players can record their own payments
+# Player payment - players can record their own and managed players' payments
 @app.route('/player/payments', methods=['GET', 'POST'])
 @login_required
 def player_payments():
@@ -247,17 +299,25 @@ def player_payments():
 
     player_id = session.get('player_id')
     player = Player.query.get_or_404(player_id)
+    managed_players = player.managed_players
 
     if request.method == 'POST':
+        target_player_id = int(request.form.get('player_id', player_id))
         amount = float(request.form.get('amount'))
         method = request.form.get('method')
         date_str = request.form.get('date')
         notes = request.form.get('notes')
 
+        # Verify target is self or managed player
+        managed_player_ids = [p.id for p in managed_players]
+        if target_player_id != player_id and target_player_id not in managed_player_ids:
+            flash('You can only record payments for yourself or managed players', 'error')
+            return redirect(url_for('player_payments'))
+
         payment_date = datetime.strptime(date_str, '%Y-%m-%d') if date_str else datetime.utcnow()
 
         payment = Payment(
-            player_id=player_id,
+            player_id=target_player_id,
             amount=amount,
             method=method,
             date=payment_date,
@@ -266,40 +326,50 @@ def player_payments():
         db.session.add(payment)
         db.session.commit()
 
-        flash(f'Payment of ${amount:.2f} recorded successfully!', 'success')
+        target_player = Player.query.get(target_player_id)
+        flash(f'Payment of ${amount:.2f} for {target_player.name} recorded successfully!', 'success')
         return redirect(url_for('player_payments'))
 
-    # Get player's payments
-    player_payments_list = player.payments.order_by(Payment.date.desc()).all()
+    # Get payments for player and managed players
+    all_player_ids = [player_id] + [p.id for p in managed_players]
+    all_payments = Payment.query.filter(Payment.player_id.in_(all_player_ids)).order_by(Payment.date.desc()).all()
 
     return render_template('player_payments.html',
                          player=player,
-                         payments=player_payments_list,
+                         managed_players=managed_players,
+                         payments=all_payments,
                          today=date.today().isoformat())
 
 
-# Player attendance API - players can only update their own attendance
+# Player attendance API - players can update their own and managed players' attendance
 @app.route('/api/player/attendance', methods=['POST'])
 @login_required
 def update_player_attendance():
     if session.get('user_type') != 'player':
         return jsonify({'error': 'Player access only'}), 403
 
-    player_id = session.get('player_id')
+    current_player_id = session.get('player_id')
+    current_player = Player.query.get(current_player_id)
     data = request.get_json()
     session_id = data.get('session_id')
     status = data.get('status')
+    target_player_id = data.get('player_id', current_player_id)  # Default to self
 
     # Players can only use YES, NO, TENTATIVE (DROPOUT and FILLIN are admin-only)
     if status not in ['YES', 'NO', 'TENTATIVE']:
         return jsonify({'error': 'Invalid status'}), 400
 
-    attendance = Attendance.query.filter_by(player_id=player_id, session_id=session_id).first()
+    # Check if target player is self or a managed player
+    managed_player_ids = [p.id for p in current_player.managed_players]
+    if target_player_id != current_player_id and target_player_id not in managed_player_ids:
+        return jsonify({'error': 'You can only vote for yourself or your managed players'}), 403
+
+    attendance = Attendance.query.filter_by(player_id=target_player_id, session_id=session_id).first()
 
     if attendance:
         attendance.status = status
     else:
-        attendance = Attendance(player_id=player_id, session_id=session_id, status=status)
+        attendance = Attendance(player_id=target_player_id, session_id=session_id, status=status)
         db.session.add(attendance)
 
     db.session.commit()
@@ -360,12 +430,27 @@ def add_player():
         player = Player(name=name, category=category, phone=phone, email=email, zelle_preference=zelle_preference)
         if password:
             player.set_password(password)
+
+        # Handle managed_by
+        managed_by = request.form.get('managed_by')
+        if managed_by:
+            player.managed_by = int(managed_by)
+
+        # Handle profile photo upload
+        if 'profile_photo' in request.files:
+            file = request.files['profile_photo']
+            if file and file.filename:
+                filename = save_profile_photo(file)
+                if filename:
+                    player.profile_photo = filename
+
         db.session.add(player)
         db.session.commit()
         flash(f'Player {name} added successfully!', 'success')
         return redirect(url_for('players'))
 
-    return render_template('player_form.html', player=None)
+    all_players = Player.query.order_by(Player.name).all()
+    return render_template('player_form.html', player=None, all_players=all_players)
 
 
 @app.route('/players/<int:id>')
@@ -391,11 +476,30 @@ def edit_player(id):
         password = request.form.get('password')
         if password:
             player.set_password(password)
+
+        # Handle managed_by
+        managed_by = request.form.get('managed_by')
+        player.managed_by = int(managed_by) if managed_by else None
+
+        # Handle profile photo upload
+        if 'profile_photo' in request.files:
+            file = request.files['profile_photo']
+            if file and file.filename:
+                # Delete old photo if exists
+                if player.profile_photo:
+                    old_path = os.path.join(app.config['UPLOAD_FOLDER'], player.profile_photo)
+                    if os.path.exists(old_path):
+                        os.remove(old_path)
+                filename = save_profile_photo(file)
+                if filename:
+                    player.profile_photo = filename
+
         db.session.commit()
         flash(f'Player {player.name} updated successfully!', 'success')
         return redirect(url_for('player_detail', id=id))
 
-    return render_template('player_form.html', player=player)
+    all_players = Player.query.order_by(Player.name).all()
+    return render_template('player_form.html', player=player, all_players=all_players)
 
 
 @app.route('/players/<int:id>/delete', methods=['POST'])
