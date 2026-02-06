@@ -117,6 +117,56 @@
     </div>
 </div>
 
+<!-- Financial Summary -->
+<div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 mb-6 overflow-hidden">
+    <div class="px-6 py-4 border-b border-wimbledon-gold/20 bg-gradient-to-r from-wimbledon-gold/10 to-white">
+        <h2 class="text-lg font-serif font-bold text-gray-800 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-wimbledon-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+            </svg>
+            Financial Summary
+        </h2>
+    </div>
+    <div class="p-6">
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <!-- Regular Courts -->
+            <div class="bg-green-50 rounded-xl p-4 border border-green-200">
+                <div class="text-xs font-medium text-green-600 uppercase tracking-wide mb-1">Regular Courts</div>
+                <div class="text-2xl font-bold text-green-700">${{ "%.2f"|format(session.get_regular_court_cost()) }}</div>
+            </div>
+            <!-- Adhoc Courts -->
+            <div class="bg-purple-50 rounded-xl p-4 border border-purple-200">
+                <div class="text-xs font-medium text-purple-600 uppercase tracking-wide mb-1">Adhoc Courts</div>
+                <div class="text-2xl font-bold text-purple-700">${{ "%.2f"|format(session.get_adhoc_court_cost()) }}</div>
+            </div>
+            <!-- Birdie Cost -->
+            <div class="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
+                <div class="text-xs font-medium text-yellow-600 uppercase tracking-wide mb-1">Birdie Cost</div>
+                <div class="text-2xl font-bold text-yellow-700">${{ "%.2f"|format(session.get_birdie_cost_total()) }}</div>
+                <div class="text-xs text-yellow-600 mt-1">${{ "%.2f"|format(session.birdie_cost) }} x {{ session.get_attendee_count() }} players</div>
+            </div>
+            <!-- Total Collection -->
+            <div class="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                <div class="text-xs font-medium text-blue-600 uppercase tracking-wide mb-1">Expected Collection</div>
+                <div class="text-2xl font-bold text-blue-700">${{ "%.2f"|format(session.get_total_collection()) }}</div>
+            </div>
+            <!-- Refunds -->
+            <div class="bg-red-50 rounded-xl p-4 border border-red-200">
+                <div class="text-xs font-medium text-red-600 uppercase tracking-wide mb-1">Refunds Given</div>
+                <div class="text-2xl font-bold text-red-700">${{ "%.2f"|format(session.get_total_refunds()) }}</div>
+                {% if session.dropout_refunds|selectattr('status', 'equalto', 'processed')|list|length > 0 %}
+                <div class="text-xs text-red-600 mt-1">{{ session.dropout_refunds|selectattr('status', 'equalto', 'processed')|list|length }} refund(s)</div>
+                {% endif %}
+            </div>
+            <!-- Net Collection -->
+            <div class="bg-wimbledon-purple/10 rounded-xl p-4 border border-wimbledon-purple/30">
+                <div class="text-xs font-medium text-wimbledon-purple uppercase tracking-wide mb-1">Net Collection</div>
+                <div class="text-2xl font-bold text-wimbledon-purple">${{ "%.2f"|format(session.get_total_collection() - session.get_total_refunds()) }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Courts Line Items -->
 {% if session.courts.count() > 0 %}
 <div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 mb-6 overflow-hidden">
@@ -132,15 +182,20 @@
         {% for court in session.courts.all() %}
         <div class="px-6 py-4 flex items-center justify-between">
             <div class="flex items-center gap-4">
-                <div class="w-10 h-10 bg-wimbledon-purple/10 rounded-lg flex items-center justify-center">
-                    <span class="text-wimbledon-purple font-bold">{{ loop.index }}</span>
+                <div class="w-10 h-10 {% if court.court_type == 'adhoc' %}bg-purple-100{% else %}bg-wimbledon-purple/10{% endif %} rounded-lg flex items-center justify-center">
+                    <span class="{% if court.court_type == 'adhoc' %}text-purple-600{% else %}text-wimbledon-purple{% endif %} font-bold">{{ loop.index }}</span>
                 </div>
                 <div>
-                    <div class="font-medium text-gray-800">{{ court.name }}</div>
+                    <div class="font-medium text-gray-800 flex items-center gap-2">
+                        {{ court.name }}
+                        <span class="text-xs px-2 py-0.5 rounded-full {% if court.court_type == 'adhoc' %}bg-purple-100 text-purple-700{% else %}bg-green-100 text-green-700{% endif %}">
+                            {{ court.court_type|capitalize }}
+                        </span>
+                    </div>
                     <div class="text-sm text-gray-500">{{ court.start_time }} - {{ court.end_time }}</div>
                 </div>
             </div>
-            <div class="text-lg font-bold text-wimbledon-purple">${{ "%.2f"|format(court.cost) }}</div>
+            <div class="text-lg font-bold {% if court.court_type == 'adhoc' %}text-purple-600{% else %}text-wimbledon-purple{% endif %}">${{ "%.2f"|format(court.cost) }}</div>
         </div>
         {% endfor %}
     </div>

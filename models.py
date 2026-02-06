@@ -165,6 +165,35 @@ class Session(db.Model):
                 return round(court_cost_per_player, 2)
             return 0
 
+    def get_regular_court_cost(self):
+        """Get total cost of regular courts"""
+        return sum(court.cost for court in self.courts.all() if court.court_type == 'regular')
+
+    def get_adhoc_court_cost(self):
+        """Get total cost of adhoc courts"""
+        return sum(court.cost for court in self.courts.all() if court.court_type == 'adhoc')
+
+    def get_total_refunds(self):
+        """Get total refunds given for this session"""
+        return sum(r.refund_amount for r in self.dropout_refunds if r.status == 'processed')
+
+    def get_total_collection(self):
+        """
+        Calculate total expected collection from players for this session.
+        Sum of cost per player for all attending players (excluding kids who pay flat rate).
+        """
+        total = 0
+        for attendance in self.attendances.filter_by(status='YES').all():
+            if attendance.category == 'kid':
+                total += 11.0  # Kids pay flat $11
+            else:
+                total += self.get_cost_per_player()
+        return round(total, 2)
+
+    def get_birdie_cost_total(self):
+        """Get total birdie cost for the session (birdie_cost * number of attendees)"""
+        return round(self.birdie_cost * self.get_attendee_count(), 2)
+
     def to_dict(self):
         start_time, end_time = self.get_time_range()
         return {
@@ -190,6 +219,7 @@ class Court(db.Model):
     start_time = db.Column(db.String(20), nullable=False)  # "6:30 AM"
     end_time = db.Column(db.String(20), nullable=False)    # "9:30 AM"
     cost = db.Column(db.Float, nullable=False, default=0)
+    court_type = db.Column(db.String(20), default='regular')  # 'regular' or 'adhoc'
 
     # Audit fields
     created_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)

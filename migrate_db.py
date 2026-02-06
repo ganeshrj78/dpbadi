@@ -45,6 +45,16 @@ def migrate_sqlite(db_path):
     else:
         print("  - 'voting_frozen' column already exists in sessions table")
 
+    # Check and add court_type to courts
+    cursor.execute('PRAGMA table_info(courts)')
+    columns = [col[1] for col in cursor.fetchall()]
+
+    if 'court_type' not in columns:
+        cursor.execute("ALTER TABLE courts ADD COLUMN court_type VARCHAR(20) DEFAULT 'regular'")
+        print("  - Added 'court_type' column to courts table")
+    else:
+        print("  - 'court_type' column already exists in courts table")
+
     # Check if birdie_bank table exists
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='birdie_bank'")
     if not cursor.fetchone():
@@ -118,6 +128,17 @@ def migrate_postgresql(database_url):
         print("  - Added 'voting_frozen' column to sessions table")
     else:
         print("  - 'voting_frozen' column already exists in sessions table")
+
+    # Check and add court_type to courts
+    cursor.execute("""
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'courts' AND column_name = 'court_type'
+    """)
+    if not cursor.fetchone():
+        cursor.execute("ALTER TABLE courts ADD COLUMN court_type VARCHAR(20) DEFAULT 'regular'")
+        print("  - Added 'court_type' column to courts table")
+    else:
+        print("  - 'court_type' column already exists in courts table")
 
     # Check if birdie_bank table exists
     cursor.execute("""

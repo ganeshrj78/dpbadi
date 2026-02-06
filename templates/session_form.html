@@ -79,11 +79,19 @@
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                 </button>
                             </div>
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Name</label>
                                     <input type="text" :name="'court_name_' + index" x-model="court.name" placeholder="Court 1"
                                         class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-wimbledon-green">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">Type</label>
+                                    <select :name="'court_type_' + index" x-model="court.court_type"
+                                        class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-wimbledon-green bg-white">
+                                        <option value="regular">Regular</option>
+                                        <option value="adhoc">Adhoc</option>
+                                    </select>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Start Time</label>
@@ -142,11 +150,11 @@ function sessionForm() {
         courts: [
             {% if session and session.courts.count() > 0 %}
                 {% for court in session.courts.all() %}
-                { name: '{{ court.name }}', start_time: '{{ court.start_time }}', end_time: '{{ court.end_time }}', cost: {{ court.cost }} },
+                { name: '{{ court.name }}', court_type: '{{ court.court_type or "regular" }}', start_time: '{{ court.start_time }}', end_time: '{{ court.end_time }}', cost: {{ court.cost }} },
                 {% endfor %}
             {% else %}
-                { name: 'Court 1', start_time: '6:30 AM', end_time: '9:30 AM', cost: 30 },
-                { name: 'Court 2', start_time: '6:30 AM', end_time: '9:30 AM', cost: 30 }
+                { name: 'Court 1', court_type: 'regular', start_time: '6:30 AM', end_time: '9:30 AM', cost: 30 },
+                { name: 'Court 2', court_type: 'regular', start_time: '6:30 AM', end_time: '9:30 AM', cost: 30 }
             {% endif %}
         ],
         get totalCost() {
@@ -154,7 +162,7 @@ function sessionForm() {
         },
         addCourt() {
             const num = this.courts.length + 1;
-            this.courts.push({ name: 'Court ' + num, start_time: '6:30 AM', end_time: '9:30 AM', cost: 30 });
+            this.courts.push({ name: 'Court ' + num, court_type: 'regular', start_time: '6:30 AM', end_time: '9:30 AM', cost: 30 });
         },
         removeCourt(index) {
             if (this.courts.length > 1) {

@@ -609,6 +609,7 @@ def add_session():
         # Add courts
         for i in range(court_count):
             court_name = request.form.get(f'court_name_{i}', f'Court {i+1}')
+            court_type = request.form.get(f'court_type_{i}', 'regular')
             court_start = request.form.get(f'court_start_{i}', '6:30 AM')
             court_end = request.form.get(f'court_end_{i}', '9:30 AM')
             court_cost = float(request.form.get(f'court_cost_{i}', 30))
@@ -616,6 +617,7 @@ def add_session():
             court = Court(
                 session_id=new_session.id,
                 name=court_name,
+                court_type=court_type,
                 start_time=court_start,
                 end_time=court_end,
                 cost=court_cost
@@ -677,6 +679,7 @@ def edit_session(id):
         # Add courts
         for i in range(court_count):
             court_name = request.form.get(f'court_name_{i}', f'Court {i+1}')
+            court_type = request.form.get(f'court_type_{i}', 'regular')
             court_start = request.form.get(f'court_start_{i}', '6:30 AM')
             court_end = request.form.get(f'court_end_{i}', '9:30 AM')
             court_cost = float(request.form.get(f'court_cost_{i}', 30))
@@ -684,6 +687,7 @@ def edit_session(id):
             court = Court(
                 session_id=id,
                 name=court_name,
+                court_type=court_type,
                 start_time=court_start,
                 end_time=court_end,
                 cost=court_cost
