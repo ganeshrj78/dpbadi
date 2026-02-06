@@ -24,8 +24,8 @@ class Player(db.Model):
     updated_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    attendances = db.relationship('Attendance', backref='player', lazy='dynamic', cascade='all, delete-orphan')
-    payments = db.relationship('Payment', backref='player', lazy='dynamic', cascade='all, delete-orphan')
+    attendances = db.relationship('Attendance', backref='player', lazy='dynamic', cascade='all, delete-orphan', foreign_keys='Attendance.player_id')
+    payments = db.relationship('Payment', backref='player', lazy='dynamic', cascade='all, delete-orphan', foreign_keys='Payment.player_id')
 
     def set_password(self, password):
         """Set password hash from plain text password"""
