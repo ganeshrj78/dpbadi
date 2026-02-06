@@ -796,9 +796,29 @@ def update_dropout_refund(id):
     action = request.form.get('action')
 
     if action == 'update':
-        refund.refund_amount = float(request.form.get('refund_amount', refund.refund_amount))
+        old_amount = refund.refund_amount
+        new_amount = float(request.form.get('refund_amount', refund.refund_amount))
+        refund.refund_amount = new_amount
         refund.instructions = request.form.get('instructions', '').strip()
-        flash('Refund updated successfully!', 'success')
+
+        # If already processed, update the corresponding payment record
+        if refund.status == 'processed':
+            # Find and update the payment record
+            payment = Payment.query.filter_by(
+                player_id=refund.player_id,
+                method='Refund'
+            ).filter(
+                Payment.notes.like(f'%Dropout refund for session {refund.session.date.strftime("%b %d, %Y")}%')
+            ).first()
+
+            if payment:
+                payment.amount = -new_amount
+                payment.notes = f'Dropout refund for session {refund.session.date.strftime("%b %d, %Y")}. {refund.instructions or ""}'.strip()
+                flash(f'Refund updated from ${old_amount:.2f} to ${new_amount:.2f} and payment record adjusted', 'success')
+            else:
+                flash('Refund updated but could not find corresponding payment record', 'error')
+        else:
+            flash('Refund updated successfully!', 'success')
 
     elif action == 'process':
         refund.status = 'processed'
@@ -816,8 +836,24 @@ def update_dropout_refund(id):
         flash(f'Refund of ${refund.refund_amount:.2f} processed and credited to {refund.player.name}', 'success')
 
     elif action == 'cancel':
+        # If already processed, remove the payment record
+        if refund.status == 'processed':
+            payment = Payment.query.filter_by(
+                player_id=refund.player_id,
+                method='Refund'
+            ).filter(
+                Payment.notes.like(f'%Dropout refund for session {refund.session.date.strftime("%b %d, %Y")}%')
+            ).first()
+
+            if payment:
+                db.session.delete(payment)
+                flash('Refund cancelled and payment record removed', 'success')
+            else:
+                flash('Refund cancelled but could not find corresponding payment record', 'error')
+        else:
+            flash('Refund cancelled', 'success')
+
         refund.status = 'cancelled'
-        flash('Refund cancelled', 'success')
 
     db.session.commit()
     return redirect(url_for('session_refunds', id=session_id))

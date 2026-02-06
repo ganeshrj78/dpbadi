@@ -103,18 +103,20 @@
                             </span>
                         </div>
 
-                        {% if existing_refund.status == 'pending' %}
+                        {% if existing_refund.status != 'cancelled' %}
                         <div class="flex gap-2">
                             <button @click="showForm = !showForm" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
                                 Edit
                             </button>
+                            {% if existing_refund.status == 'pending' %}
                             <form method="POST" action="{{ url_for('update_dropout_refund', id=existing_refund.id) }}" class="inline">
                                 <input type="hidden" name="action" value="process">
                                 <button type="submit" class="px-3 py-1.5 text-sm bg-wimbledon-green text-white rounded-lg hover:bg-wimbledon-green-dark">
                                     Process
                                 </button>
                             </form>
-                            <form method="POST" action="{{ url_for('update_dropout_refund', id=existing_refund.id) }}" class="inline">
+                            {% endif %}
+                            <form method="POST" action="{{ url_for('update_dropout_refund', id=existing_refund.id) }}" class="inline" onsubmit="return confirm('{% if existing_refund.status == 'processed' %}This will remove the payment credit from the player\'s balance. {% endif %}Are you sure?');">
                                 <input type="hidden" name="action" value="cancel">
                                 <button type="submit" class="px-3 py-1.5 text-sm border border-red-300 text-red-600 rounded-lg hover:bg-red-50">
                                     Cancel
@@ -138,6 +140,11 @@
 
                 <!-- Refund Form -->
                 <div x-show="showForm" x-collapse class="mt-4 p-4 bg-gray-50 rounded-xl">
+                    {% if existing_refund and existing_refund.status == 'processed' %}
+                    <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                        <strong>Note:</strong> This refund has been processed. Editing will update the payment credit on the player's balance.
+                    </div>
+                    {% endif %}
                     <form method="POST" action="{% if existing_refund %}{{ url_for('update_dropout_refund', id=existing_refund.id) }}{% else %}{{ url_for('add_dropout_refund', id=session.id) }}{% endif %}">
                         {% if existing_refund %}
                         <input type="hidden" name="action" value="update">
