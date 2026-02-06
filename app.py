@@ -183,16 +183,26 @@ def player_sessions():
     player_id = session.get('player_id')
     player = Player.query.get_or_404(player_id)
 
-    # Get upcoming sessions
-    upcoming_sessions = Session.query.filter(Session.date >= date.today()).order_by(Session.date.asc()).all()
+    # Get upcoming sessions (not archived, future dates)
+    upcoming_sessions = Session.query.filter(
+        Session.date >= date.today(),
+        Session.is_archived == False
+    ).order_by(Session.date.asc()).all()
 
-    # Get completed sessions for current month
-    today = date.today()
-    first_of_month = today.replace(day=1)
-    past_sessions = Session.query.filter(
-        Session.date >= first_of_month,
-        Session.date < today
-    ).order_by(Session.date.desc()).all()
+    # Get completed sessions (archived sessions) grouped by year-month
+    archived_sessions = Session.query.filter_by(is_archived=True).order_by(Session.date.desc()).all()
+
+    # Group archived by year-month
+    archived_grouped = {}
+    for sess in archived_sessions:
+        key = sess.date.strftime('%Y-%m')
+        label = sess.date.strftime('%B %Y')
+        if key not in archived_grouped:
+            archived_grouped[key] = {'label': label, 'sessions': []}
+        archived_grouped[key]['sessions'].append(sess)
+
+    # Sort by key (year-month) descending
+    archived_sorted = sorted(archived_grouped.items(), key=lambda x: x[0], reverse=True)
 
     # Get attendance map for this player
     attendance_map = {}
@@ -203,15 +213,15 @@ def player_sessions():
     all_players = Player.query.order_by(Player.name).all()
 
     # Get all attendance records for sessions we're displaying
-    all_sessions = upcoming_sessions + past_sessions
+    all_sessions = upcoming_sessions + archived_sessions
     session_attendance = {}  # {session_id: {player_id: status}}
     for sess in all_sessions:
         session_attendance[sess.id] = {}
         for att in sess.attendances.all():
             session_attendance[sess.id][att.player_id] = att.status
 
-    # Ensure current player has attendance records for all sessions
-    for sess in all_sessions:
+    # Ensure current player has attendance records for upcoming sessions
+    for sess in upcoming_sessions:
         if sess.id not in attendance_map:
             attendance = Attendance(player_id=player_id, session_id=sess.id, status='NO')
             db.session.add(attendance)
@@ -222,11 +232,50 @@ def player_sessions():
     return render_template('player_sessions.html',
                          player=player,
                          upcoming_sessions=upcoming_sessions,
-                         past_sessions=past_sessions,
+                         archived_groups=archived_sorted,
                          attendance_map=attendance_map,
                          all_players=all_players,
-                         session_attendance=session_attendance,
-                         current_month=today.strftime('%B %Y'))
+                         session_attendance=session_attendance)
+
+
+# Player payment - players can record their own payments
+@app.route('/player/payments', methods=['GET', 'POST'])
+@login_required
+def player_payments():
+    if session.get('user_type') != 'player':
+        return redirect(url_for('payments'))
+
+    player_id = session.get('player_id')
+    player = Player.query.get_or_404(player_id)
+
+    if request.method == 'POST':
+        amount = float(request.form.get('amount'))
+        method = request.form.get('method')
+        date_str = request.form.get('date')
+        notes = request.form.get('notes')
+
+        payment_date = datetime.strptime(date_str, '%Y-%m-%d') if date_str else datetime.utcnow()
+
+        payment = Payment(
+            player_id=player_id,
+            amount=amount,
+            method=method,
+            date=payment_date,
+            notes=notes
+        )
+        db.session.add(payment)
+        db.session.commit()
+
+        flash(f'Payment of ${amount:.2f} recorded successfully!', 'success')
+        return redirect(url_for('player_payments'))
+
+    # Get player's payments
+    player_payments_list = player.payments.order_by(Payment.date.desc()).all()
+
+    return render_template('player_payments.html',
+                         player=player,
+                         payments=player_payments_list,
+                         today=date.today().isoformat())
 
 
 # Player attendance API - players can only update their own attendance
@@ -241,7 +290,8 @@ def update_player_attendance():
     session_id = data.get('session_id')
     status = data.get('status')
 
-    if status not in ['YES', 'NO', 'TENTATIVE', 'DROPOUT', 'FILLIN']:
+    # Players can only use YES, NO, TENTATIVE (DROPOUT and FILLIN are admin-only)
+    if status not in ['YES', 'NO', 'TENTATIVE']:
         return jsonify({'error': 'Invalid status'}), 400
 
     attendance = Attendance.query.filter_by(player_id=player_id, session_id=session_id).first()

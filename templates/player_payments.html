@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}My Payments - BP Badminton{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 gradient-primary rounded-2xl shadow-lg mb-4 border-2 border-wimbledon-gold">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+        </div>
+        <h1 class="text-3xl font-serif font-bold text-wimbledon-purple">My Payments</h1>
+        <p class="text-gray-500 mt-1">Record and view your payments</p>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6 mb-6">
+        <!-- Balance Summary -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 border border-wimbledon-gold/20">
+            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Total Charges</h3>
+            <p class="text-2xl font-bold text-gray-800">${{ '%.2f'|format(player.get_total_charges()) }}</p>
+        </div>
+        <div class="bg-white rounded-2xl shadow-lg p-6 border border-wimbledon-gold/20">
+            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Total Paid</h3>
+            <p class="text-2xl font-bold text-wimbledon-green">${{ '%.2f'|format(player.get_total_payments()) }}</p>
+        </div>
+        <div class="rounded-2xl shadow-lg p-6 border {% if player.get_balance() > 0 %}bg-red-50 border-red-200{% else %}bg-green-50 border-green-200{% endif %}">
+            <h3 class="text-sm font-semibold {% if player.get_balance() > 0 %}text-red-600{% else %}text-green-600{% endif %} uppercase tracking-wide mb-2">Balance Due</h3>
+            <p class="text-2xl font-bold {% if player.get_balance() > 0 %}text-red-600{% else %}text-green-600{% endif %}">${{ '%.2f'|format(player.get_balance()) }}</p>
+        </div>
+    </div>
+
+    <!-- Record Payment Form -->
+    <div class="bg-white rounded-2xl shadow-lg p-6 border border-wimbledon-gold/20 mb-6">
+        <h2 class="text-xl font-serif font-bold text-wimbledon-purple mb-4 flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+            Record a Payment
+        </h2>
+        <form method="POST" class="grid md:grid-cols-2 gap-4">
+            <div>
+                <label for="amount" class="block text-sm font-semibold text-gray-700 mb-1">Amount ($)</label>
+                <input type="number" step="0.01" min="0.01" name="amount" id="amount" required
+                    class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all"
+                    placeholder="0.00"
+                    {% if player.get_balance() > 0 %}value="{{ '%.2f'|format(player.get_balance()) }}"{% endif %}>
+            </div>
+            <div>
+                <label for="method" class="block text-sm font-semibold text-gray-700 mb-1">Payment Method</label>
+                <select name="method" id="method" required
+                    class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all">
+                    <option value="Zelle">Zelle</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Venmo">Venmo</option>
+                    <option value="Check">Check</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div>
+                <label for="date" class="block text-sm font-semibold text-gray-700 mb-1">Date</label>
+                <input type="date" name="date" id="date" required value="{{ today }}"
+                    class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all">
+            </div>
+            <div>
+                <label for="notes" class="block text-sm font-semibold text-gray-700 mb-1">Notes (optional)</label>
+                <input type="text" name="notes" id="notes"
+                    class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-wimbledon-green focus:ring-4 focus:ring-wimbledon-green/20 transition-all"
+                    placeholder="Any additional notes">
+            </div>
+            <div class="md:col-span-2">
+                <button type="submit" class="w-full btn-success text-white py-3 px-4 rounded-xl font-semibold shadow border border-wimbledon-gold/30">
+                    <span class="flex items-center justify-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span>Record Payment</span>
+                    </span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Payment History -->
+    <div class="bg-white rounded-2xl shadow-lg p-6 border border-wimbledon-gold/20">
+        <h2 class="text-xl font-serif font-bold text-wimbledon-purple mb-4 flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+            </svg>
+            Payment History
+        </h2>
+        {% if payments %}
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b border-gray-200">
+                        <th class="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
+                        <th class="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Method</th>
+                        <th class="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Notes</th>
+                        <th class="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in payments %}
+                    <tr class="border-b border-gray-100 table-row-hover">
+                        <td class="py-3 px-4 text-gray-800">{{ payment.date.strftime('%b %d, %Y') }}</td>
+                        <td class="py-3 px-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                {% if payment.method == 'Zelle' %}bg-blue-100 text-blue-800
+                                {% elif payment.method == 'Cash' %}bg-green-100 text-green-800
+                                {% else %}bg-purple-100 text-purple-800{% endif %}">
+                                {{ payment.method }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-gray-600">{{ payment.notes or '-' }}</td>
+                        <td class="py-3 px-4 text-right font-semibold text-wimbledon-green">${{ '%.2f'|format(payment.amount) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-gray-500 text-center py-8">No payments recorded yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

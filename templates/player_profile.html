@@ -157,9 +157,10 @@
                 </thead>
                 <tbody>
                     {% for attendance in attendances[:10] %}
+                    {% set sess_start, sess_end = attendance.session.get_time_range() %}
                     <tr class="border-b border-gray-100 table-row-hover">
                         <td class="py-3 px-4 text-gray-800">{{ attendance.session.date.strftime('%b %d, %Y') }}</td>
-                        <td class="py-3 px-4 text-gray-600">{{ attendance.session.start_time }} - {{ attendance.session.end_time }}</td>
+                        <td class="py-3 px-4 text-gray-600">{{ sess_start }} - {{ sess_end }}</td>
                         <td class="py-3 px-4 text-center">
                             {% if attendance.status == 'YES' %}
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Attended</span>
