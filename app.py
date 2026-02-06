@@ -5,7 +5,7 @@ from werkzeug.utils import secure_filename
 import os
 import uuid
 from config import Config
-from models import db, Player, Session, Court, Attendance, Payment
+from models import db, Player, Session, Court, Attendance, Payment, BirdieBank
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -354,6 +354,11 @@ def update_player_attendance():
     session_id = data.get('session_id')
     status = data.get('status')
     target_player_id = data.get('player_id', current_player_id)  # Default to self
+
+    # Check if voting is frozen for this session
+    sess = Session.query.get(session_id)
+    if sess and sess.voting_frozen:
+        return jsonify({'error': 'Voting is frozen for this session'}), 403
 
     # Players can only use YES, NO, TENTATIVE (DROPOUT and FILLIN are admin-only)
     if status not in ['YES', 'NO', 'TENTATIVE']:
@@ -713,6 +718,17 @@ def toggle_archive(id):
     return redirect(url_for('session_detail', id=id))
 
 
+@app.route('/sessions/<int:id>/toggle-voting-freeze', methods=['POST'])
+@admin_required
+def toggle_voting_freeze(id):
+    sess = Session.query.get_or_404(id)
+    sess.voting_frozen = not sess.voting_frozen
+    db.session.commit()
+    status = 'frozen' if sess.voting_frozen else 'unfrozen'
+    flash(f'Voting {status} for this session!', 'success')
+    return redirect(url_for('session_detail', id=id))
+
+
 # Attendance API
 @app.route('/api/attendance', methods=['POST'])
 @admin_required
@@ -833,6 +849,96 @@ def delete_payment(id):
     db.session.commit()
     flash('Payment deleted successfully!', 'success')
     return redirect(url_for('payments'))
+
+
+# Birdie Bank routes (admin only)
+@app.route('/birdie-bank')
+@admin_required
+def birdie_bank():
+    transactions = BirdieBank.query.order_by(BirdieBank.date.desc()).all()
+    current_stock = BirdieBank.get_current_stock()
+    total_spent = BirdieBank.get_total_spent()
+
+    # Get sessions for linking usage
+    sessions_list = Session.query.order_by(Session.date.desc()).limit(20).all()
+
+    return render_template('birdie_bank.html',
+                         transactions=transactions,
+                         current_stock=current_stock,
+                         total_spent=total_spent,
+                         sessions=sessions_list,
+                         today=date.today().isoformat())
+
+
+@app.route('/birdie-bank/add', methods=['POST'])
+@admin_required
+def add_birdie_transaction():
+    transaction_type = request.form.get('transaction_type')
+    quantity = int(request.form.get('quantity'))
+    cost = float(request.form.get('cost', 0))
+    notes = request.form.get('notes')
+    date_str = request.form.get('date')
+    session_id = request.form.get('session_id')
+
+    transaction_date = datetime.strptime(date_str, '%Y-%m-%d') if date_str else datetime.utcnow()
+
+    transaction = BirdieBank(
+        transaction_type=transaction_type,
+        quantity=quantity,
+        cost=cost if transaction_type == 'purchase' else 0,
+        notes=notes,
+        date=transaction_date,
+        session_id=int(session_id) if session_id else None
+    )
+    db.session.add(transaction)
+    db.session.commit()
+
+    if transaction_type == 'purchase':
+        flash(f'Added {quantity} birdies to inventory (${cost:.2f})', 'success')
+    else:
+        flash(f'Recorded usage of {quantity} birdies', 'success')
+
+    return redirect(url_for('birdie_bank'))
+
+
+@app.route('/birdie-bank/<int:id>/delete', methods=['POST'])
+@admin_required
+def delete_birdie_transaction(id):
+    transaction = BirdieBank.query.get_or_404(id)
+    db.session.delete(transaction)
+    db.session.commit()
+    flash('Transaction deleted successfully!', 'success')
+    return redirect(url_for('birdie_bank'))
+
+
+# Admin password reset (for player admins)
+@app.route('/admin/reset-password', methods=['GET', 'POST'])
+@admin_required
+def reset_admin_password():
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        # Verify current admin password
+        if current_password != app.config['APP_PASSWORD']:
+            flash('Current admin password is incorrect', 'error')
+            return redirect(url_for('reset_admin_password'))
+
+        if new_password != confirm_password:
+            flash('New passwords do not match', 'error')
+            return redirect(url_for('reset_admin_password'))
+
+        if len(new_password) < 4:
+            flash('Password must be at least 4 characters', 'error')
+            return redirect(url_for('reset_admin_password'))
+
+        # Update the password in config (runtime only - need env var for persistence)
+        app.config['APP_PASSWORD'] = new_password
+        flash('Admin password updated successfully! Note: Update APP_PASSWORD environment variable for persistence.', 'success')
+        return redirect(url_for('dashboard'))
+
+    return render_template('reset_admin_password.html')
 
 
 if __name__ == '__main__':

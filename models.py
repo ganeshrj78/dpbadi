@@ -47,10 +47,14 @@ class Player(db.Model):
         total = 0
         for attendance in self.attendances.filter_by(status='YES').all():
             session = attendance.session
-            attendee_count = session.attendances.filter_by(status='YES').count()
-            if attendee_count > 0:
-                court_cost_per_player = session.get_total_cost() / attendee_count
-                total += court_cost_per_player + session.birdie_cost
+            # Kids pay flat $11 per session
+            if attendance.category == 'kid':
+                total += 11.0
+            else:
+                attendee_count = session.attendances.filter_by(status='YES').count()
+                if attendee_count > 0:
+                    court_cost_per_player = session.get_total_cost() / attendee_count
+                    total += court_cost_per_player + session.birdie_cost
         return round(total, 2)
 
     def get_total_payments(self):
@@ -83,6 +87,7 @@ class Session(db.Model):
     birdie_cost = db.Column(db.Float, nullable=False, default=0)
     notes = db.Column(db.Text)
     is_archived = db.Column(db.Boolean, default=False)
+    voting_frozen = db.Column(db.Boolean, default=False)  # If True, players cannot change their votes
 
     # Audit fields
     created_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
@@ -227,3 +232,47 @@ class Payment(db.Model):
             'date': self.date.isoformat(),
             'notes': self.notes
         }
+
+
+class BirdieBank(db.Model):
+    """Track birdie (shuttlecock) inventory - purchases and usage"""
+    __tablename__ = 'birdie_bank'
+
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.DateTime, default=datetime.utcnow)
+    transaction_type = db.Column(db.String(20), nullable=False)  # 'purchase' or 'usage'
+    quantity = db.Column(db.Integer, nullable=False)  # positive for purchase, positive for usage (stored as positive, type determines direction)
+    cost = db.Column(db.Float, default=0)  # cost for purchases
+    notes = db.Column(db.Text)
+    session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=True)  # link to session for usage
+
+    # Audit fields
+    created_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    session = db.relationship('Session', backref='birdie_transactions')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'date': self.date.isoformat(),
+            'transaction_type': self.transaction_type,
+            'quantity': self.quantity,
+            'cost': self.cost,
+            'notes': self.notes,
+            'session_id': self.session_id
+        }
+
+    @staticmethod
+    def get_current_stock():
+        """Calculate current birdie stock"""
+        purchases = db.session.query(db.func.sum(BirdieBank.quantity)).filter_by(transaction_type='purchase').scalar() or 0
+        usage = db.session.query(db.func.sum(BirdieBank.quantity)).filter_by(transaction_type='usage').scalar() or 0
+        return purchases - usage
+
+    @staticmethod
+    def get_total_spent():
+        """Calculate total amount spent on birdies"""
+        return db.session.query(db.func.sum(BirdieBank.cost)).filter_by(transaction_type='purchase').scalar() or 0
