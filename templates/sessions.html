@@ -31,7 +31,6 @@
             <thead>
                 <tr class="bg-gradient-to-r from-wimbledon-cream to-white border-b border-wimbledon-gold/20">
                     <th class="px-4 py-3 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Month</th>
-                    <th class="px-4 py-3 text-center text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Sessions</th>
                     <th class="px-4 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Birdie Charges</th>
                     <th class="px-4 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Regular</th>
                     <th class="px-4 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Adhoc</th>
@@ -46,9 +45,6 @@
                 <tr class="{% if summary.is_fully_archived %}bg-gray-50{% else %}bg-white{% endif %} hover:bg-wimbledon-cream/30 transition-all">
                     <td class="px-4 py-3 whitespace-nowrap">
                         <span class="font-semibold text-gray-800">{{ summary.label }}</span>
-                    </td>
-                    <td class="px-4 py-3 whitespace-nowrap text-center">
-                        <span class="text-gray-600">{{ summary.archived_sessions }}/{{ summary.total_sessions }}</span>
                     </td>
                     <td class="px-4 py-3 whitespace-nowrap text-right">
                         <span class="text-yellow-700 font-medium">${{ "%.2f"|format(summary.birdie_charges) }}</span>
