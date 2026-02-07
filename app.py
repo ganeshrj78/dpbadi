@@ -567,6 +567,47 @@ def sessions():
     # Active sessions (not archived)
     active_sessions = Session.query.filter_by(is_archived=False).order_by(Session.date.desc()).all()
 
+    # All sessions grouped by year and month for summary
+    all_sessions = Session.query.order_by(Session.date.desc()).all()
+
+    # Group all sessions by year-month for monthly summary
+    monthly_summary = {}
+    for sess in all_sessions:
+        key = sess.date.strftime('%Y-%m')
+        label = sess.date.strftime('%B %Y')
+        if key not in monthly_summary:
+            monthly_summary[key] = {
+                'label': label,
+                'sessions': [],
+                'total_sessions': 0,
+                'archived_sessions': 0,
+                'birdie_charges': 0,
+                'regular_charges': 0,
+                'adhoc_charges': 0,
+                'kid_charges': 0,
+                'total_refunds': 0,
+                'total_collection': 0
+            }
+        monthly_summary[key]['sessions'].append(sess)
+        monthly_summary[key]['total_sessions'] += 1
+        if sess.is_archived:
+            monthly_summary[key]['archived_sessions'] += 1
+        monthly_summary[key]['birdie_charges'] += sess.get_birdie_cost_total()
+        monthly_summary[key]['regular_charges'] += sess.get_regular_player_charges()
+        monthly_summary[key]['adhoc_charges'] += sess.get_adhoc_player_charges()
+        monthly_summary[key]['kid_charges'] += sess.get_kid_player_charges()
+        monthly_summary[key]['total_refunds'] += sess.get_total_refunds()
+        monthly_summary[key]['total_collection'] += sess.get_total_collection()
+
+    # Calculate if month is fully archived
+    for key in monthly_summary:
+        monthly_summary[key]['is_fully_archived'] = (
+            monthly_summary[key]['total_sessions'] == monthly_summary[key]['archived_sessions']
+        )
+
+    # Sort by key (year-month) descending
+    monthly_sorted = sorted(monthly_summary.items(), key=lambda x: x[0], reverse=True)
+
     # Archived sessions grouped by year and month
     archived_sessions = Session.query.filter_by(is_archived=True).order_by(Session.date.desc()).all()
 
@@ -584,7 +625,8 @@ def sessions():
 
     return render_template('sessions.html',
                           active_sessions=active_sessions,
-                          archived_groups=archived_sorted)
+                          archived_groups=archived_sorted,
+                          monthly_summary=monthly_sorted)
 
 
 @app.route('/sessions/add', methods=['GET', 'POST'])
@@ -731,6 +773,26 @@ def toggle_voting_freeze(id):
     status = 'frozen' if sess.voting_frozen else 'unfrozen'
     flash(f'Voting {status} for this session!', 'success')
     return redirect(url_for('session_detail', id=id))
+
+
+@app.route('/sessions/bulk-archive', methods=['POST'])
+@admin_required
+def bulk_archive_sessions():
+    session_ids = request.form.getlist('session_ids')
+    if not session_ids:
+        flash('No sessions selected', 'error')
+        return redirect(url_for('sessions'))
+
+    count = 0
+    for session_id in session_ids:
+        sess = Session.query.get(int(session_id))
+        if sess and not sess.is_archived:
+            sess.is_archived = True
+            count += 1
+
+    db.session.commit()
+    flash(f'{count} session(s) archived successfully!', 'success')
+    return redirect(url_for('sessions'))
 
 
 # Dropout Refund routes

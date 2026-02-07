@@ -194,6 +194,30 @@ class Session(db.Model):
         """Get total birdie cost for the session (birdie_cost * number of attendees)"""
         return round(self.birdie_cost * self.get_attendee_count(), 2)
 
+    def get_regular_player_charges(self):
+        """Get total charges from regular players for this session"""
+        total = 0
+        for attendance in self.attendances.filter_by(status='YES').all():
+            if attendance.category == 'regular':
+                total += self.get_cost_per_player()
+        return round(total, 2)
+
+    def get_adhoc_player_charges(self):
+        """Get total charges from adhoc players for this session"""
+        total = 0
+        for attendance in self.attendances.filter_by(status='YES').all():
+            if attendance.category == 'adhoc':
+                total += self.get_cost_per_player()
+        return round(total, 2)
+
+    def get_kid_player_charges(self):
+        """Get total charges from kid players for this session"""
+        total = 0
+        for attendance in self.attendances.filter_by(status='YES').all():
+            if attendance.category == 'kid':
+                total += 11.0  # Kids pay flat $11
+        return round(total, 2)
+
     def to_dict(self):
         start_time, end_time = self.get_time_range()
         return {
