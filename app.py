@@ -987,6 +987,46 @@ def bulk_unarchive_sessions():
     return redirect(url_for('sessions'))
 
 
+@app.route('/sessions/bulk-freeze-voting', methods=['POST'])
+@admin_required
+def bulk_freeze_voting():
+    session_ids = request.form.getlist('session_ids')
+    if not session_ids:
+        flash('No sessions selected', 'error')
+        return redirect(url_for('sessions'))
+
+    count = 0
+    for session_id in session_ids:
+        sess = Session.query.get(int(session_id))
+        if sess and not sess.voting_frozen:
+            sess.voting_frozen = True
+            count += 1
+
+    db.session.commit()
+    flash(f'Voting frozen for {count} session(s)!', 'success')
+    return redirect(url_for('sessions'))
+
+
+@app.route('/sessions/bulk-unfreeze-voting', methods=['POST'])
+@admin_required
+def bulk_unfreeze_voting():
+    session_ids = request.form.getlist('session_ids')
+    if not session_ids:
+        flash('No sessions selected', 'error')
+        return redirect(url_for('sessions'))
+
+    count = 0
+    for session_id in session_ids:
+        sess = Session.query.get(int(session_id))
+        if sess and sess.voting_frozen:
+            sess.voting_frozen = False
+            count += 1
+
+    db.session.commit()
+    flash(f'Voting unfrozen for {count} session(s)!', 'success')
+    return redirect(url_for('sessions'))
+
+
 # Dropout Refund routes
 @app.route('/sessions/<int:id>/refunds')
 @admin_required
