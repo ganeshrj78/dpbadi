@@ -96,6 +96,9 @@ def login():
             password = request.form.get('player_password')
             player = Player.query.filter(db.func.lower(Player.email) == email).first()
             if player and player.check_password(password):
+                if not player.is_approved:
+                    flash('Your registration is pending approval. Please wait for admin approval.', 'error')
+                    return render_template('login.html')
                 if not player.is_active:
                     flash('Your account has been deactivated. Please contact an admin.', 'error')
                     return render_template('login.html')
@@ -123,6 +126,54 @@ def logout():
     return redirect(url_for('login'))
 
 
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        phone = request.form.get('phone', '').strip()
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+
+        # Validation
+        if not name or not email or not password:
+            flash('Name, email, and password are required', 'error')
+            return render_template('register.html')
+
+        if password != confirm_password:
+            flash('Passwords do not match', 'error')
+            return render_template('register.html')
+
+        if len(password) < 4:
+            flash('Password must be at least 4 characters', 'error')
+            return render_template('register.html')
+
+        # Check if email already exists
+        existing_player = Player.query.filter(db.func.lower(Player.email) == email).first()
+        if existing_player:
+            flash('An account with this email already exists', 'error')
+            return render_template('register.html')
+
+        # Create new player (pending approval)
+        player = Player(
+            name=name,
+            email=email,
+            phone=phone,
+            category='regular',
+            is_approved=False,
+            is_active=True
+        )
+        player.set_password(password)
+
+        db.session.add(player)
+        db.session.commit()
+
+        flash('Registration successful! Please wait for admin approval.', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('register.html')
+
+
 # Dashboard
 @app.route('/')
 @login_required
@@ -132,13 +183,16 @@ def dashboard():
         return redirect(url_for('player_profile'))
     # Admin and player_admin can access dashboard
 
-    total_players = Player.query.count()
+    total_players = Player.query.filter_by(is_approved=True).count()
     upcoming_sessions = Session.query.filter(Session.date >= date.today()).count()
 
     # Calculate total outstanding balance
-    players = Player.query.all()
+    players = Player.query.filter_by(is_approved=True).all()
     total_outstanding = sum(p.get_balance() for p in players)
     total_collected = sum(p.get_total_payments() for p in players)
+
+    # Pending approvals
+    pending_approvals = Player.query.filter_by(is_approved=False).order_by(Player.created_at.desc()).all()
 
     # Recent sessions
     recent_sessions = Session.query.order_by(Session.date.desc()).limit(5).all()
@@ -151,6 +205,7 @@ def dashboard():
                          upcoming_sessions=upcoming_sessions,
                          total_outstanding=round(total_outstanding, 2),
                          total_collected=round(total_collected, 2),
+                         pending_approvals=pending_approvals,
                          recent_sessions=recent_sessions,
                          recent_payments=recent_payments)
 
@@ -168,7 +223,31 @@ def player_profile():
     if request.method == 'POST':
         action = request.form.get('action')
 
-        if action == 'update_zelle':
+        if action == 'update_profile':
+            name = request.form.get('name', '').strip()
+            email = request.form.get('email', '').strip().lower()
+            phone = request.form.get('phone', '').strip()
+
+            if not name:
+                flash('Name is required', 'error')
+            else:
+                # Check if email is taken by another player
+                if email:
+                    existing = Player.query.filter(
+                        db.func.lower(Player.email) == email,
+                        Player.id != player.id
+                    ).first()
+                    if existing:
+                        flash('This email is already in use by another player', 'error')
+                        return redirect(url_for('player_profile'))
+
+                player.name = name
+                player.email = email if email else None
+                player.phone = phone if phone else None
+                db.session.commit()
+                flash('Profile updated successfully!', 'success')
+
+        elif action == 'update_zelle':
             zelle_pref = request.form.get('zelle_preference')
             if zelle_pref in ['email', 'phone']:
                 player.zelle_preference = zelle_pref
@@ -432,7 +511,7 @@ def add_player():
             flash('Name is required', 'error')
             return render_template('player_form.html', player=None)
 
-        player = Player(name=name, category=category, phone=phone, email=email, zelle_preference=zelle_preference)
+        player = Player(name=name, category=category, phone=phone, email=email, zelle_preference=zelle_preference, is_approved=True)
         if password:
             player.set_password(password)
 
@@ -558,6 +637,27 @@ def toggle_active(id):
     status = 'activated' if player.is_active else 'deactivated'
     flash(f'{player.name} has been {status}!', 'success')
     return redirect(url_for('player_detail', id=id))
+
+
+@app.route('/players/<int:id>/approve', methods=['POST'])
+@admin_required
+def approve_player(id):
+    player = Player.query.get_or_404(id)
+    player.is_approved = True
+    db.session.commit()
+    flash(f'{player.name} has been approved!', 'success')
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/players/<int:id>/reject', methods=['POST'])
+@admin_required
+def reject_player(id):
+    player = Player.query.get_or_404(id)
+    name = player.name
+    db.session.delete(player)
+    db.session.commit()
+    flash(f'Registration for {name} has been rejected and removed.', 'success')
+    return redirect(url_for('dashboard'))
 
 
 # Session routes

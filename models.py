@@ -19,6 +19,7 @@ class Player(db.Model):
     managed_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)  # Parent player who can vote/pay for this player
     is_admin = db.Column(db.Boolean, default=False)  # Player admin flag
     is_active = db.Column(db.Boolean, default=True)  # Active/Inactive status
+    is_approved = db.Column(db.Boolean, default=False)  # Registration approval status
 
     # Audit fields
     created_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
