@@ -561,12 +561,19 @@ def add_player():
         email = request.form.get('email')
         password = request.form.get('password')
         zelle_preference = request.form.get('zelle_preference', 'email')
+        gender = request.form.get('gender', 'male')
+        dob_str = request.form.get('date_of_birth')
 
         if not name:
             flash('Name is required', 'error')
             return render_template('player_form.html', player=None)
 
-        player = Player(name=name, category=category, phone=phone, email=email, zelle_preference=zelle_preference, is_approved=True)
+        player = Player(name=name, category=category, phone=phone, email=email, zelle_preference=zelle_preference, gender=gender, is_approved=True)
+
+        # Handle date of birth
+        if dob_str:
+            player.date_of_birth = datetime.strptime(dob_str, '%Y-%m-%d').date()
+
         if password:
             player.set_password(password)
 
@@ -612,6 +619,10 @@ def edit_player(id):
         player.phone = request.form.get('phone')
         player.email = request.form.get('email')
         player.zelle_preference = request.form.get('zelle_preference', 'email')
+        player.gender = request.form.get('gender', 'male')
+        dob_str = request.form.get('date_of_birth')
+        player.date_of_birth = datetime.strptime(dob_str, '%Y-%m-%d').date() if dob_str else None
+
         password = request.form.get('password')
         if password:
             player.set_password(password)

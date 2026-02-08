@@ -15,6 +15,8 @@ class Player(db.Model):
     email = db.Column(db.String(100))
     password_hash = db.Column(db.String(255))
     zelle_preference = db.Column(db.String(10), default='email')  # 'email' or 'phone'
+    date_of_birth = db.Column(db.Date, nullable=True)  # Optional date of birth
+    gender = db.Column(db.String(10), default='male')  # 'male', 'female', 'other'
     profile_photo = db.Column(db.String(255))  # filename of uploaded photo
     managed_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)  # Parent player who can vote/pay for this player
     is_admin = db.Column(db.Boolean, default=False)  # Player admin flag
