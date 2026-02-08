@@ -4,11 +4,52 @@ from datetime import datetime, date
 from werkzeug.utils import secure_filename
 import os
 import uuid
+import logging
+from logging.handlers import RotatingFileHandler
 from config import Config
 from models import db, Player, Session, Court, Attendance, Payment, BirdieBank, DropoutRefund
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# CSRF Protection
+csrf = CSRFProtect(app)
+
+# Rate Limiting
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+
+# Logging Configuration
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+
+# Security audit log
+security_handler = RotatingFileHandler('logs/security.log', maxBytes=10240000, backupCount=10)
+security_handler.setFormatter(logging.Formatter(
+    '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+))
+security_handler.setLevel(logging.INFO)
+
+security_logger = logging.getLogger('security')
+security_logger.setLevel(logging.INFO)
+security_logger.addHandler(security_handler)
+
+# Application log
+app_handler = RotatingFileHandler('logs/app.log', maxBytes=10240000, backupCount=10)
+app_handler.setFormatter(logging.Formatter(
+    '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+))
+app_handler.setLevel(logging.INFO)
+app.logger.addHandler(app_handler)
+app.logger.setLevel(logging.INFO)
+app.logger.info('BP Badminton startup')
 
 # File upload configuration
 UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
@@ -78,17 +119,21 @@ def master_admin_required(f):
 
 # Auth routes
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")  # Rate limit: 10 login attempts per minute
 def login():
     if request.method == 'POST':
         login_type = request.form.get('login_type', 'admin')
+        client_ip = request.remote_addr
 
         if login_type == 'admin':
             password = request.form.get('password')
             if password == app.config['APP_PASSWORD']:
                 session['authenticated'] = True
                 session['user_type'] = 'admin'
+                security_logger.info(f'ADMIN_LOGIN_SUCCESS - IP: {client_ip}')
                 flash('Successfully logged in as admin!', 'success')
                 return redirect(url_for('dashboard'))
+            security_logger.warning(f'ADMIN_LOGIN_FAILED - IP: {client_ip}')
             flash('Invalid password', 'error')
         else:
             # Player login
@@ -97,21 +142,26 @@ def login():
             player = Player.query.filter(db.func.lower(Player.email) == email).first()
             if player and player.check_password(password):
                 if not player.is_approved:
+                    security_logger.info(f'LOGIN_PENDING_APPROVAL - Email: {email}, IP: {client_ip}')
                     flash('Your registration is pending approval. Please wait for admin approval.', 'error')
                     return render_template('login.html')
                 if not player.is_active:
+                    security_logger.warning(f'LOGIN_INACTIVE_ACCOUNT - Email: {email}, IP: {client_ip}')
                     flash('Your account has been deactivated. Please contact an admin.', 'error')
                     return render_template('login.html')
                 session['authenticated'] = True
                 session['player_id'] = player.id
                 if player.is_admin:
                     session['user_type'] = 'player_admin'
+                    security_logger.info(f'PLAYER_ADMIN_LOGIN_SUCCESS - Player: {player.name} (ID: {player.id}), IP: {client_ip}')
                     flash(f'Welcome back, {player.name}! (Admin)', 'success')
                     return redirect(url_for('dashboard'))
                 else:
                     session['user_type'] = 'player'
+                    security_logger.info(f'PLAYER_LOGIN_SUCCESS - Player: {player.name} (ID: {player.id}), IP: {client_ip}')
                     flash(f'Welcome back, {player.name}!', 'success')
                     return redirect(url_for('player_profile'))
+            security_logger.warning(f'PLAYER_LOGIN_FAILED - Email: {email}, IP: {client_ip}')
             flash('Invalid email or password', 'error')
 
     return render_template('login.html')
@@ -127,6 +177,7 @@ def logout():
 
 
 @app.route('/register', methods=['GET', 'POST'])
+@limiter.limit("5 per hour")  # Rate limit: 5 registrations per hour per IP
 def register():
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
@@ -134,6 +185,7 @@ def register():
         phone = request.form.get('phone', '').strip()
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
+        client_ip = request.remote_addr
 
         # Validation
         if not name or not email or not password:
@@ -151,6 +203,7 @@ def register():
         # Check if email already exists
         existing_player = Player.query.filter(db.func.lower(Player.email) == email).first()
         if existing_player:
+            security_logger.warning(f'REGISTRATION_DUPLICATE_EMAIL - Email: {email}, IP: {client_ip}')
             flash('An account with this email already exists', 'error')
             return render_template('register.html')
 
@@ -168,6 +221,7 @@ def register():
         db.session.add(player)
         db.session.commit()
 
+        security_logger.info(f'REGISTRATION_SUCCESS - Name: {name}, Email: {email}, IP: {client_ip}')
         flash('Registration successful! Please wait for admin approval.', 'success')
         return redirect(url_for('login'))
 
@@ -422,6 +476,7 @@ def player_payments():
 
 # Player attendance API - players can update their own and managed players' attendance
 @app.route('/api/player/attendance', methods=['POST'])
+@csrf.exempt  # API endpoint uses JSON
 @login_required
 def update_player_attendance():
     if session.get('user_type') != 'player':
@@ -609,6 +664,7 @@ def toggle_admin(id):
 
 
 @app.route('/api/players/<int:id>/category', methods=['POST'])
+@csrf.exempt  # API endpoint uses JSON
 @admin_required
 def update_player_category(id):
     player = Player.query.get_or_404(id)
@@ -645,6 +701,8 @@ def approve_player(id):
     player = Player.query.get_or_404(id)
     player.is_approved = True
     db.session.commit()
+    admin_info = f"Admin" if session.get('user_type') == 'admin' else f"Player Admin (ID: {session.get('player_id')})"
+    security_logger.info(f'PLAYER_APPROVED - Player: {player.name} (ID: {player.id}), By: {admin_info}, IP: {request.remote_addr}')
     flash(f'{player.name} has been approved!', 'success')
     return redirect(url_for('dashboard'))
 
@@ -654,6 +712,9 @@ def approve_player(id):
 def reject_player(id):
     player = Player.query.get_or_404(id)
     name = player.name
+    email = player.email
+    admin_info = f"Admin" if session.get('user_type') == 'admin' else f"Player Admin (ID: {session.get('player_id')})"
+    security_logger.info(f'PLAYER_REJECTED - Player: {name}, Email: {email}, By: {admin_info}, IP: {request.remote_addr}')
     db.session.delete(player)
     db.session.commit()
     flash(f'Registration for {name} has been rejected and removed.', 'success')
@@ -1058,6 +1119,7 @@ def delete_dropout_refund(id):
 
 # Attendance API
 @app.route('/api/attendance', methods=['POST'])
+@csrf.exempt  # API endpoint uses JSON
 @admin_required
 def update_attendance():
     data = request.get_json()
@@ -1090,6 +1152,7 @@ def update_attendance():
 
 # Attendance category API - update player category for a specific session
 @app.route('/api/attendance/category', methods=['POST'])
+@csrf.exempt  # API endpoint uses JSON
 @admin_required
 def update_attendance_category():
     data = request.get_json()
@@ -1266,6 +1329,14 @@ def reset_admin_password():
         return redirect(url_for('dashboard'))
 
     return render_template('reset_admin_password.html')
+
+
+# Rate limit error handler
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    security_logger.warning(f'RATE_LIMIT_EXCEEDED - IP: {request.remote_addr}, Path: {request.path}')
+    flash('Too many requests. Please try again later.', 'error')
+    return redirect(url_for('login'))
 
 
 if __name__ == '__main__':

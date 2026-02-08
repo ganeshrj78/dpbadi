@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}BP Badminton{% endblock %}</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -306,5 +307,22 @@
     {% endif %}
 
     {% block scripts %}{% endblock %}
+
+    <!-- CSRF Token Injection for all forms -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            document.querySelectorAll('form').forEach(function(form) {
+                // Skip if form already has csrf_token
+                if (!form.querySelector('input[name="csrf_token"]')) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'csrf_token';
+                    input.value = csrfToken;
+                    form.appendChild(input);
+                }
+            });
+        });
+    </script>
 </body>
 </html>
