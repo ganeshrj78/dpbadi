@@ -70,6 +70,24 @@ class Player(db.Model):
         """Calculate outstanding balance (charges - payments)"""
         return round(self.get_total_charges() - self.get_total_payments(), 2)
 
+    def get_pending_refunds_count(self):
+        """Count pending refunds for this player"""
+        return DropoutRefund.query.filter_by(player_id=self.id, status='pending').count()
+
+    def get_total_refunded(self):
+        """Get total amount already refunded to this player"""
+        total = db.session.query(db.func.sum(DropoutRefund.refund_amount)).filter_by(
+            player_id=self.id, status='processed'
+        ).scalar() or 0
+        return round(total, 2)
+
+    def get_pending_refund_amount(self):
+        """Get total pending refund amount for this player"""
+        total = db.session.query(db.func.sum(DropoutRefund.refund_amount)).filter_by(
+            player_id=self.id, status='pending'
+        ).scalar() or 0
+        return round(total, 2)
+
     def to_dict(self):
         return {
             'id': self.id,

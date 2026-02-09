@@ -1388,7 +1388,33 @@ def update_attendance():
         if attendance:
             db.session.delete(attendance)
     elif attendance:
+        old_status = attendance.status
         attendance.status = status
+
+        # Auto-create refund when dropping out of a frozen session
+        if sess.voting_frozen and status == 'DROPOUT' and old_status == 'YES':
+            # Check if refund already exists
+            existing_refund = DropoutRefund.query.filter_by(
+                session_id=session_id, player_id=player_id
+            ).first()
+            if not existing_refund:
+                suggested_amount = sess.calculate_suggested_refund()
+                refund = DropoutRefund(
+                    player_id=player_id,
+                    session_id=session_id,
+                    refund_amount=suggested_amount,
+                    suggested_amount=suggested_amount,
+                    status='pending'
+                )
+                db.session.add(refund)
+
+        # Remove refund if reverting from DROPOUT back to YES
+        if sess.voting_frozen and status == 'YES' and old_status == 'DROPOUT':
+            existing_refund = DropoutRefund.query.filter_by(
+                session_id=session_id, player_id=player_id, status='pending'
+            ).first()
+            if existing_refund:
+                db.session.delete(existing_refund)
     else:
         player = Player.query.get(player_id)
         attendance = Attendance(player_id=player_id, session_id=session_id, status=status, category=player.category if player else 'regular')
