@@ -85,7 +85,7 @@
 {% endif %}
 
 <!-- Active Sessions - Attendance Matrix -->
-<div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 overflow-hidden mb-8" x-data="{ selectedSessions: [], paymentFilter: 'all' }">
+<div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 overflow-hidden mb-8" x-data="{ selectedSessions: [], paymentFilter: 'all', searchQuery: '' }">
     <div class="px-6 py-4 border-b border-wimbledon-gold/20 bg-gradient-to-r from-wimbledon-cream to-white flex items-center justify-between">
         <h2 class="text-lg font-serif font-bold text-wimbledon-purple flex items-center">
             <svg class="w-5 h-5 mr-2 text-wimbledon-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,10 +139,26 @@
     </div>
 
     {% if active_sessions %}
-    <!-- Payment Status Filter -->
-    <div class="px-6 py-3 border-b border-wimbledon-gold/20 bg-gray-50 flex items-center gap-4">
-        <span class="text-sm font-medium text-gray-600">Filter by Payment:</span>
+    <!-- Filters: Search and Payment Status -->
+    <div class="px-6 py-3 border-b border-wimbledon-gold/20 bg-gray-50 flex flex-wrap items-center gap-4">
+        <!-- Search by Player Name -->
         <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-gray-600">Search:</span>
+            <div class="relative">
+                <input type="text" x-model="searchQuery" placeholder="Player name..."
+                    class="pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-wimbledon-purple focus:ring-2 focus:ring-wimbledon-purple/20 w-48">
+                <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <button x-show="searchQuery" @click="searchQuery = ''" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Payment Status Filter -->
+        <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-gray-600">Payment:</span>
             <button @click="paymentFilter = 'all'"
                 :class="paymentFilter === 'all' ? 'bg-wimbledon-purple text-white' : 'bg-white text-gray-600 border border-gray-300'"
                 class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all">
@@ -213,7 +229,7 @@
                 </tr>
                 {% for player in regular_players %}
                 <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all"
-                    x-show="paymentFilter === 'all' || (paymentFilter === 'paid' && {{ player.get_balance() }} <= 0) || (paymentFilter === 'unpaid' && {{ player.get_balance() }} > 0)">
+                    x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ player.get_balance() }} <= 0) || (paymentFilter === 'unpaid' && {{ player.get_balance() }} > 0))">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
                         <div class="flex items-center space-x-2">
                             <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
@@ -297,7 +313,7 @@
                 </tr>
                 {% for player in adhoc_players %}
                 <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all"
-                    x-show="paymentFilter === 'all' || (paymentFilter === 'paid' && {{ player.get_balance() }} <= 0) || (paymentFilter === 'unpaid' && {{ player.get_balance() }} > 0)">
+                    x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ player.get_balance() }} <= 0) || (paymentFilter === 'unpaid' && {{ player.get_balance() }} > 0))">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
                         <div class="flex items-center space-x-2">
                             <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
@@ -380,7 +396,8 @@
                     </td>
                 </tr>
                 {% for player in kid_players %}
-                <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all">
+                <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all"
+                    x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ player.get_balance() }} <= 0) || (paymentFilter === 'unpaid' && {{ player.get_balance() }} > 0))">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
                         <div class="flex items-center space-x-2">
                             <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
