@@ -168,6 +168,9 @@
                         </a>
                     </th>
                     {% endfor %}
+                    <th class="px-2 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[60px]">
+                        Birdie
+                    </th>
                     <th class="px-2 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[80px]">
                         Balance
                     </th>
@@ -177,7 +180,7 @@
                 <!-- Regular Players Section -->
                 {% if regular_players %}
                 <tr class="bg-green-50">
-                    <td colspan="{{ active_sessions|length + 3 }}" class="px-4 py-2 text-xs font-bold text-green-700 uppercase tracking-wider sticky left-0 bg-green-50">
+                    <td colspan="{{ active_sessions|length + 4 }}" class="px-4 py-2 text-xs font-bold text-green-700 uppercase tracking-wider sticky left-0 bg-green-50">
                         Regular Players ({{ regular_players|length }})
                     </td>
                 </tr>
@@ -227,6 +230,17 @@
                     </td>
                     {% endfor %}
                     <td class="px-2 py-2 text-right whitespace-nowrap">
+                        {% set birdie_total = namespace(total=0) %}
+                        {% for session in active_sessions %}
+                            {% if attendance_map.get(session.id, {}).get(player.id) == 'YES' %}
+                                {% set birdie_total.total = birdie_total.total + session.birdie_cost %}
+                            {% endif %}
+                        {% endfor %}
+                        <span class="text-sm font-medium text-yellow-700">
+                            ${{ "%.2f"|format(birdie_total.total) }}
+                        </span>
+                    </td>
+                    <td class="px-2 py-2 text-right whitespace-nowrap">
                         {% set balance = player.get_balance() %}
                         <span class="text-sm font-bold {% if balance > 0 %}text-red-600{% elif balance < 0 %}text-green-600{% else %}text-gray-500{% endif %}">
                             ${{ "%.2f"|format(balance) }}
@@ -239,7 +253,7 @@
                 <!-- Adhoc Players Section -->
                 {% if adhoc_players %}
                 <tr class="bg-purple-50">
-                    <td colspan="{{ active_sessions|length + 3 }}" class="px-4 py-2 text-xs font-bold text-purple-700 uppercase tracking-wider sticky left-0 bg-purple-50">
+                    <td colspan="{{ active_sessions|length + 4 }}" class="px-4 py-2 text-xs font-bold text-purple-700 uppercase tracking-wider sticky left-0 bg-purple-50">
                         Adhoc Players ({{ adhoc_players|length }})
                     </td>
                 </tr>
@@ -257,6 +271,16 @@
                                 {% endif %}
                                 <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
                             </a>
+                            <!-- Bulk Actions for Player -->
+                            <div class="flex items-center gap-0.5 ml-2">
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'YES')" title="Yes" class="w-5 h-5 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 text-[10px]">Y</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'NO')" title="No" class="w-5 h-5 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 text-[10px]">N</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'TENTATIVE')" title="Tentative" class="w-5 h-5 bg-yellow-500 text-white rounded flex items-center justify-center hover:bg-yellow-600 text-[10px]">?</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'FILLIN')" title="Fill-In" class="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600 text-[10px]">F</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'DROPOUT')" title="Drop-Out" class="w-5 h-5 bg-orange-500 text-white rounded flex items-center justify-center hover:bg-orange-600 text-[10px]">D</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'CLEAR')" title="Clear" class="w-5 h-5 bg-gray-400 text-white rounded flex items-center justify-center hover:bg-gray-500 text-[10px]">X</button>
+                            </div>
+                        </div>
                     </td>
                     {% for session in active_sessions %}
                     <td class="px-1 py-1 text-center">
@@ -279,6 +303,17 @@
                     </td>
                     {% endfor %}
                     <td class="px-2 py-2 text-right whitespace-nowrap">
+                        {% set birdie_total = namespace(total=0) %}
+                        {% for session in active_sessions %}
+                            {% if attendance_map.get(session.id, {}).get(player.id) == 'YES' %}
+                                {% set birdie_total.total = birdie_total.total + session.birdie_cost %}
+                            {% endif %}
+                        {% endfor %}
+                        <span class="text-sm font-medium text-yellow-700">
+                            ${{ "%.2f"|format(birdie_total.total) }}
+                        </span>
+                    </td>
+                    <td class="px-2 py-2 text-right whitespace-nowrap">
                         {% set balance = player.get_balance() %}
                         <span class="text-sm font-bold {% if balance > 0 %}text-red-600{% elif balance < 0 %}text-green-600{% else %}text-gray-500{% endif %}">
                             ${{ "%.2f"|format(balance) }}
@@ -291,7 +326,7 @@
                 <!-- Kid Players Section -->
                 {% if kid_players %}
                 <tr class="bg-blue-50">
-                    <td colspan="{{ active_sessions|length + 3 }}" class="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider sticky left-0 bg-blue-50">
+                    <td colspan="{{ active_sessions|length + 4 }}" class="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider sticky left-0 bg-blue-50">
                         Kids ({{ kid_players|length }})
                     </td>
                 </tr>
@@ -341,6 +376,9 @@
                     </td>
                     {% endfor %}
                     <td class="px-2 py-2 text-right whitespace-nowrap">
+                        <span class="text-sm font-medium text-gray-400">$0.00</span>
+                    </td>
+                    <td class="px-2 py-2 text-right whitespace-nowrap">
                         {% set balance = player.get_balance() %}
                         <span class="text-sm font-bold {% if balance > 0 %}text-red-600{% elif balance < 0 %}text-green-600{% else %}text-gray-500{% endif %}">
                             ${{ "%.2f"|format(balance) }}
@@ -363,6 +401,7 @@
                         </div>
                     </td>
                     {% endfor %}
+                    <td class="px-2 py-3"></td>
                     <td class="px-2 py-3"></td>
                 </tr>
             </tbody>
