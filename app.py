@@ -1359,12 +1359,35 @@ def update_attendance():
     session_id = data.get('session_id')
     status = data.get('status')
 
-    if status not in ['YES', 'NO', 'TENTATIVE', 'DROPOUT', 'FILLIN']:
+    if status not in ['YES', 'NO', 'TENTATIVE', 'DROPOUT', 'FILLIN', 'CLEAR']:
         return jsonify({'error': 'Invalid status'}), 400
 
-    attendance = Attendance.query.filter_by(player_id=player_id, session_id=session_id).first()
+    sess = Session.query.get(session_id)
+    if not sess:
+        return jsonify({'error': 'Session not found'}), 404
 
-    if attendance:
+    attendance = Attendance.query.filter_by(player_id=player_id, session_id=session_id).first()
+    current_status = attendance.status if attendance else None
+
+    # When session is frozen, only allow specific transitions
+    if sess.voting_frozen:
+        allowed_transitions = {
+            'YES': ['DROPOUT'],  # YES can only change to DROPOUT
+            'NO': ['FILLIN'],    # NO can only change to FILLIN
+            'TENTATIVE': ['DROPOUT', 'FILLIN'],  # TENTATIVE can change to either
+            'DROPOUT': ['YES'],  # DROPOUT can revert to YES
+            'FILLIN': ['NO'],    # FILLIN can revert to NO
+            None: ['FILLIN'],    # No status can change to FILLIN
+        }
+
+        allowed = allowed_transitions.get(current_status, [])
+        if status not in allowed and status != current_status:
+            return jsonify({'error': f'Session is frozen. Only Dropout and Fill-in changes are allowed.'}), 403
+
+    if status == 'CLEAR':
+        if attendance:
+            db.session.delete(attendance)
+    elif attendance:
         attendance.status = status
     else:
         player = Player.query.get(player_id)
@@ -1374,7 +1397,6 @@ def update_attendance():
     db.session.commit()
 
     # Return updated session costs
-    sess = Session.query.get(session_id)
     return jsonify({
         'success': True,
         'attendee_count': sess.get_attendee_count(),
