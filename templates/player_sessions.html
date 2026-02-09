@@ -17,12 +17,29 @@
 
     <!-- Upcoming Sessions -->
     <div class="bg-white rounded-2xl shadow-lg p-6 border border-wimbledon-gold/20 mb-6">
-        <h2 class="text-xl font-serif font-bold text-wimbledon-purple mb-4 flex items-center">
-            <svg class="w-5 h-5 mr-2 text-wimbledon-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            Upcoming Sessions
-        </h2>
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-serif font-bold text-wimbledon-purple flex items-center">
+                <svg class="w-5 h-5 mr-2 text-wimbledon-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Upcoming Sessions
+            </h2>
+            {% if upcoming_sessions %}
+            <!-- Bulk Update Buttons -->
+            <div class="flex items-center gap-2">
+                <span class="text-sm text-gray-500 mr-2">Set all to:</span>
+                <button onclick="bulkUpdateAttendance('YES')" class="px-3 py-1.5 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-all">
+                    Yes
+                </button>
+                <button onclick="bulkUpdateAttendance('NO')" class="px-3 py-1.5 bg-gray-400 text-white rounded-lg text-sm font-medium hover:bg-gray-500 transition-all">
+                    No
+                </button>
+                <button onclick="bulkUpdateAttendance('TENTATIVE')" class="px-3 py-1.5 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 transition-all">
+                    Maybe
+                </button>
+            </div>
+            {% endif %}
+        </div>
 
         {% if upcoming_sessions %}
         <div class="space-y-6">
@@ -74,6 +91,9 @@
                             <select
                                 @change="updateAttendance({{ sess.id }}, {{ player.id }}, $event.target.value)"
                                 x-model="status"
+                                data-session-id="{{ sess.id }}"
+                                data-player-id="{{ player.id }}"
+                                class="attendance-select"
                                 {% if sess.voting_frozen %}disabled{% endif %}
                                 :class="{
                                     'bg-green-100 border-green-300 text-green-700': status === 'YES',
@@ -93,6 +113,9 @@
                             <select
                                 @change="updateAttendance({{ sess.id }}, {{ mp.id }}, $event.target.value)"
                                 x-model="status"
+                                data-session-id="{{ sess.id }}"
+                                data-player-id="{{ mp.id }}"
+                                class="attendance-select"
                                 {% if sess.voting_frozen %}disabled{% endif %}
                                 :class="{
                                     'bg-green-100 border-green-300 text-green-700': status === 'YES',
@@ -145,13 +168,116 @@
         {% endif %}
     </div>
 
-    <!-- Completed Sessions (Archived) -->
+    <!-- Past Sessions (Not Yet Archived) -->
+    {% if past_sessions %}
+    <div class="bg-white rounded-2xl shadow-lg p-6 border border-wimbledon-gold/20 mb-6">
+        <h2 class="text-xl font-serif font-bold text-wimbledon-purple mb-4 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Recently Completed
+            <span class="ml-2 text-sm font-normal text-gray-500">(Voting closed)</span>
+        </h2>
+
+        <div class="space-y-4">
+            {% for sess in past_sessions %}
+            <div class="border border-gray-200 rounded-xl p-4 bg-gray-50" x-data="{ showPlayers: false }">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div class="flex-1">
+                        {% set start_time, end_time = sess.get_time_range() %}
+                        <div class="flex items-center gap-3 mb-2 flex-wrap">
+                            <span class="text-lg font-semibold text-gray-700">{{ sess.date.strftime('%a, %b %d, %Y') }}</span>
+                            <span class="text-sm text-gray-500">{{ start_time }} - {{ end_time }}</span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                                Completed
+                            </span>
+                        </div>
+                        <div class="flex flex-wrap gap-3 text-sm">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-200 text-gray-600">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                                {{ sess.get_court_count() }} court{{ 's' if sess.get_court_count() > 1 else '' }}
+                            </span>
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-200 text-gray-600">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                {{ sess.get_attendee_count() }} attended
+                            </span>
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-200 text-gray-600">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                ${{ '%.2f'|format(sess.get_cost_per_player()) }}/player
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Status Display (Disabled) -->
+                    <div class="flex flex-col gap-2">
+                        <!-- Self -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-medium text-gray-500 w-20 truncate">You:</span>
+                            {% set my_status = attendance_map.get(player.id, {}).get(sess.id, 'NO') %}
+                            <select disabled
+                                class="px-3 py-1.5 rounded-lg font-bold text-sm border-2 cursor-not-allowed opacity-60
+                                {% if my_status == 'YES' %}bg-green-100 border-green-300 text-green-700
+                                {% elif my_status == 'TENTATIVE' %}bg-yellow-100 border-yellow-300 text-yellow-700
+                                {% else %}bg-gray-100 border-gray-300 text-gray-600{% endif %}">
+                                <option value="YES" {% if my_status == 'YES' %}selected{% endif %}>Yes</option>
+                                <option value="NO" {% if my_status == 'NO' %}selected{% endif %}>No</option>
+                                <option value="TENTATIVE" {% if my_status == 'TENTATIVE' %}selected{% endif %}>Maybe</option>
+                            </select>
+                        </div>
+                        <!-- Managed Players -->
+                        {% for mp in managed_players %}
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-medium text-gray-400 w-20 truncate" title="{{ mp.name }}">{{ mp.name.split()[0] }}:</span>
+                            {% set mp_status = attendance_map.get(mp.id, {}).get(sess.id, 'NO') %}
+                            <select disabled
+                                class="px-3 py-1.5 rounded-lg font-bold text-sm border-2 cursor-not-allowed opacity-60
+                                {% if mp_status == 'YES' %}bg-green-100 border-green-300 text-green-700
+                                {% elif mp_status == 'TENTATIVE' %}bg-yellow-100 border-yellow-300 text-yellow-700
+                                {% else %}bg-gray-100 border-gray-300 text-gray-600{% endif %}">
+                                <option value="YES" {% if mp_status == 'YES' %}selected{% endif %}>Yes</option>
+                                <option value="NO" {% if mp_status == 'NO' %}selected{% endif %}>No</option>
+                                <option value="TENTATIVE" {% if mp_status == 'TENTATIVE' %}selected{% endif %}>Maybe</option>
+                            </select>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Show/Hide Players Toggle -->
+                <button @click="showPlayers = !showPlayers" class="mt-3 text-sm text-wimbledon-purple hover:text-wimbledon-purple-light flex items-center gap-1">
+                    <svg class="w-4 h-4 transition-transform" :class="showPlayers ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    <span x-text="showPlayers ? 'Hide attendees' : 'Show attendees'"></span>
+                </button>
+
+                <!-- Attendees List -->
+                <div x-show="showPlayers" x-collapse class="mt-3 pt-3 border-t border-gray-200">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                        {% for p in all_players %}
+                        {% set p_status = session_attendance.get(sess.id, {}).get(p.id, 'NO') %}
+                        {% if p_status == 'YES' %}
+                        <div class="flex items-center gap-2 text-sm p-2 rounded-lg bg-green-50">
+                            <span class="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>
+                            <span class="truncate {% if p.id == player.id %}font-semibold text-wimbledon-purple{% else %}text-gray-700{% endif %}">
+                                {{ p.name.split()[0] }}{% if p.id == player.id %} (You){% endif %}
+                            </span>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Archived Sessions -->
     <div class="bg-white rounded-2xl shadow-lg p-6 border border-wimbledon-gold/20">
         <h2 class="text-xl font-serif font-bold text-wimbledon-purple mb-4 flex items-center">
             <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
             </svg>
-            Completed Sessions
+            Archived Sessions
         </h2>
 
         {% if archived_groups %}
@@ -182,7 +308,7 @@
                             <div class="flex items-center gap-3">
                                 <span class="text-sm text-gray-500">{{ sess.get_attendee_count() }} attended</span>
                                 <span class="text-sm text-gray-500">${{ '%.2f'|format(sess.get_cost_per_player()) }}/player</span>
-                                {% set my_status = attendance_map.get(sess.id, 'NO') %}
+                                {% set my_status = attendance_map.get(player.id, {}).get(sess.id, 'NO') %}
                                 {% if my_status == 'YES' %}
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">You attended</span>
                                 {% elif my_status == 'TENTATIVE' %}
@@ -222,7 +348,7 @@
             {% endfor %}
         </div>
         {% else %}
-        <p class="text-gray-500 text-center py-8">No completed sessions yet.</p>
+        <p class="text-gray-500 text-center py-8">No archived sessions yet.</p>
         {% endif %}
     </div>
 </div>
@@ -256,6 +382,52 @@ async function updateAttendance(sessionId, playerId, status) {
         } else if (data.error) {
             alert(data.error);
             location.reload(); // Refresh to reset dropdown to original state
+        }
+    } catch (error) {
+        console.error('Error updating attendance:', error);
+        alert('Failed to update attendance. Please try again.');
+    }
+}
+
+async function bulkUpdateAttendance(status) {
+    // Get all attendance selects that are not disabled
+    const selects = document.querySelectorAll('.attendance-select:not([disabled])');
+
+    if (selects.length === 0) {
+        alert('No sessions available for update');
+        return;
+    }
+
+    if (!confirm(`Set all upcoming sessions to "${status === 'YES' ? 'Yes' : status === 'NO' ? 'No' : 'Maybe'}"?`)) {
+        return;
+    }
+
+    try {
+        // Collect all session/player pairs
+        const updates = [];
+        selects.forEach(select => {
+            updates.push({
+                session_id: parseInt(select.dataset.sessionId),
+                player_id: parseInt(select.dataset.playerId),
+                status: status
+            });
+        });
+
+        // Send bulk update request
+        const response = await fetch('/api/player/bulk-attendance', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ updates: updates })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to update attendance');
         }
     } catch (error) {
         console.error('Error updating attendance:', error);

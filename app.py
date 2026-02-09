@@ -363,12 +363,22 @@ def player_sessions():
     # Get managed players (spouse, kids, etc.)
     managed_players = player.managed_players
 
-    # Get active sessions (not archived) - includes past sessions until archived
+    # Get today's date for splitting sessions
+    today = date.today()
+
+    # Get upcoming sessions (not archived, date >= today)
     upcoming_sessions = Session.query.filter(
-        Session.is_archived == False
+        Session.is_archived == False,
+        Session.date >= today
     ).order_by(Session.date.asc()).all()
 
-    # Get completed sessions (archived sessions) grouped by year-month
+    # Get past sessions (not archived, date < today) - these are completed but not yet archived
+    past_sessions = Session.query.filter(
+        Session.is_archived == False,
+        Session.date < today
+    ).order_by(Session.date.desc()).all()
+
+    # Get archived sessions grouped by year-month
     archived_sessions = Session.query.filter_by(is_archived=True).order_by(Session.date.desc()).all()
 
     # Group archived by year-month
@@ -395,7 +405,7 @@ def player_sessions():
     all_players = Player.query.order_by(Player.name).all()
 
     # Get all attendance records for sessions we're displaying
-    all_sessions = upcoming_sessions + archived_sessions
+    all_sessions = upcoming_sessions + past_sessions + archived_sessions
     session_attendance = {}  # {session_id: {player_id: status}}
     for sess in all_sessions:
         session_attendance[sess.id] = {}
@@ -403,7 +413,7 @@ def player_sessions():
             session_attendance[sess.id][att.player_id] = att.status
 
     # Ensure current player and managed players have attendance records for upcoming sessions
-    for sess in upcoming_sessions:
+    for sess in upcoming_sessions + past_sessions:
         for p in players_to_track:
             if sess.id not in attendance_map[p.id]:
                 attendance = Attendance(player_id=p.id, session_id=sess.id, status='NO')
@@ -416,6 +426,7 @@ def player_sessions():
                          player=player,
                          managed_players=managed_players,
                          upcoming_sessions=upcoming_sessions,
+                         past_sessions=past_sessions,
                          archived_groups=archived_sorted,
                          attendance_map=attendance_map,
                          all_players=all_players,
@@ -519,6 +530,58 @@ def update_player_attendance():
         'attendee_count': sess.get_attendee_count(),
         'cost_per_player': sess.get_cost_per_player()
     })
+
+
+@app.route('/api/player/bulk-attendance', methods=['POST'])
+@csrf.exempt  # API endpoint uses JSON
+@login_required
+def bulk_update_player_attendance():
+    if session.get('user_type') != 'player':
+        return jsonify({'error': 'Player access only'}), 403
+
+    current_player_id = session.get('player_id')
+    current_player = Player.query.get(current_player_id)
+    managed_player_ids = [p.id for p in current_player.managed_players]
+
+    data = request.get_json()
+    updates = data.get('updates', [])
+
+    if not updates:
+        return jsonify({'error': 'No updates provided'}), 400
+
+    today = date.today()
+    updated_count = 0
+
+    for update in updates:
+        session_id = update.get('session_id')
+        target_player_id = update.get('player_id')
+        status = update.get('status')
+
+        # Validate status
+        if status not in ['YES', 'NO', 'TENTATIVE']:
+            continue
+
+        # Check if target player is self or a managed player
+        if target_player_id != current_player_id and target_player_id not in managed_player_ids:
+            continue
+
+        # Check session exists, is not frozen, and is not in the past
+        sess = Session.query.get(session_id)
+        if not sess or sess.voting_frozen or sess.date < today:
+            continue
+
+        # Update or create attendance
+        attendance = Attendance.query.filter_by(player_id=target_player_id, session_id=session_id).first()
+        if attendance:
+            attendance.status = status
+        else:
+            attendance = Attendance(player_id=target_player_id, session_id=session_id, status=status)
+            db.session.add(attendance)
+
+        updated_count += 1
+
+    db.session.commit()
+    return jsonify({'success': True, 'updated_count': updated_count})
 
 
 # Player routes
