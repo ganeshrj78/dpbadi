@@ -46,18 +46,19 @@ class Player(db.Model):
         return check_password_hash(self.password_hash, password)
 
     def get_total_charges(self):
-        """Calculate total charges from attended sessions"""
+        """Calculate total charges from attended sessions based on player category"""
         total = 0
         for attendance in self.attendances.filter_by(status='YES').all():
             session = attendance.session
-            # Kids pay flat $11 per session
             if attendance.category == 'kid':
-                total += 11.0
+                # Kids pay flat $11 per session
+                total += session.get_cost_per_kid()
+            elif attendance.category == 'adhoc':
+                # Adhoc players: adhoc court cost / adhoc players + birdie
+                total += session.get_cost_per_adhoc_player()
             else:
-                attendee_count = session.attendances.filter_by(status='YES').count()
-                if attendee_count > 0:
-                    court_cost_per_player = session.get_total_cost() / attendee_count
-                    total += court_cost_per_player + session.birdie_cost
+                # Regular players: regular court cost / regular players + birdie
+                total += session.get_cost_per_regular_player()
         return round(total, 2)
 
     def get_total_payments(self):
@@ -105,6 +106,18 @@ class Session(db.Model):
         """Count players who attended (status=YES)"""
         return self.attendances.filter_by(status='YES').count()
 
+    def get_regular_player_count(self):
+        """Count regular players who attended (status=YES)"""
+        return self.attendances.filter_by(status='YES', category='regular').count()
+
+    def get_adhoc_player_count(self):
+        """Count adhoc players who attended (status=YES)"""
+        return self.attendances.filter_by(status='YES', category='adhoc').count()
+
+    def get_kid_player_count(self):
+        """Count kid players who attended (status=YES)"""
+        return self.attendances.filter_by(status='YES', category='kid').count()
+
     def get_court_count(self):
         """Get number of courts booked"""
         return self.courts.count()
@@ -131,12 +144,31 @@ class Session(db.Model):
         return min(start_times), max(end_times)
 
     def get_cost_per_player(self):
-        """Calculate cost per attending player"""
-        attendee_count = self.get_attendee_count()
-        if attendee_count == 0:
+        """Calculate average cost per attending player (for display purposes)"""
+        # This returns the regular player cost as the default display
+        return self.get_cost_per_regular_player()
+
+    def get_cost_per_regular_player(self):
+        """Calculate cost per regular player: regular court cost / regular players + birdie"""
+        regular_count = self.get_regular_player_count()
+        if regular_count == 0:
             return 0
-        court_cost_per_player = self.get_total_cost() / attendee_count
+        regular_court_cost = self.get_regular_court_cost()
+        court_cost_per_player = regular_court_cost / regular_count
         return round(court_cost_per_player + self.birdie_cost, 2)
+
+    def get_cost_per_adhoc_player(self):
+        """Calculate cost per adhoc player: adhoc court cost / adhoc players + birdie"""
+        adhoc_count = self.get_adhoc_player_count()
+        if adhoc_count == 0:
+            return 0
+        adhoc_court_cost = self.get_adhoc_court_cost()
+        court_cost_per_player = adhoc_court_cost / adhoc_count
+        return round(court_cost_per_player + self.birdie_cost, 2)
+
+    def get_cost_per_kid(self):
+        """Kids pay flat $11 per session, no birdie cost"""
+        return 11.0
 
     def get_dropout_count(self):
         """Count players who dropped out"""
@@ -183,43 +215,43 @@ class Session(db.Model):
     def get_total_collection(self):
         """
         Calculate total expected collection from players for this session.
-        Sum of cost per player for all attending players (excluding kids who pay flat rate).
+        - Regular players: regular court cost / regular count + birdie
+        - Adhoc players: adhoc court cost / adhoc count + birdie
+        - Kids: flat $11
         """
         total = 0
         for attendance in self.attendances.filter_by(status='YES').all():
             if attendance.category == 'kid':
-                total += 11.0  # Kids pay flat $11
+                total += self.get_cost_per_kid()
+            elif attendance.category == 'adhoc':
+                total += self.get_cost_per_adhoc_player()
             else:
-                total += self.get_cost_per_player()
+                total += self.get_cost_per_regular_player()
         return round(total, 2)
 
     def get_birdie_cost_total(self):
-        """Get total birdie cost for the session (birdie_cost * number of attendees)"""
-        return round(self.birdie_cost * self.get_attendee_count(), 2)
+        """Get total birdie cost for the session (birdie_cost * non-kid attendees)"""
+        non_kid_count = self.get_regular_player_count() + self.get_adhoc_player_count()
+        return round(self.birdie_cost * non_kid_count, 2)
 
     def get_regular_player_charges(self):
         """Get total charges from regular players for this session"""
-        total = 0
-        for attendance in self.attendances.filter_by(status='YES').all():
-            if attendance.category == 'regular':
-                total += self.get_cost_per_player()
-        return round(total, 2)
+        regular_count = self.get_regular_player_count()
+        if regular_count == 0:
+            return 0
+        return round(self.get_cost_per_regular_player() * regular_count, 2)
 
     def get_adhoc_player_charges(self):
         """Get total charges from adhoc players for this session"""
-        total = 0
-        for attendance in self.attendances.filter_by(status='YES').all():
-            if attendance.category == 'adhoc':
-                total += self.get_cost_per_player()
-        return round(total, 2)
+        adhoc_count = self.get_adhoc_player_count()
+        if adhoc_count == 0:
+            return 0
+        return round(self.get_cost_per_adhoc_player() * adhoc_count, 2)
 
     def get_kid_player_charges(self):
-        """Get total charges from kid players for this session"""
-        total = 0
-        for attendance in self.attendances.filter_by(status='YES').all():
-            if attendance.category == 'kid':
-                total += 11.0  # Kids pay flat $11
-        return round(total, 2)
+        """Get total charges from kid players for this session (flat $11 each)"""
+        kid_count = self.get_kid_player_count()
+        return round(self.get_cost_per_kid() * kid_count, 2)
 
     def to_dict(self):
         start_time, end_time = self.get_time_range()
