@@ -202,16 +202,10 @@
                         Birdie
                     </th>
                     <th class="px-2 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[80px]">
-                        Balance
+                        Total
                     </th>
                     <th class="px-2 py-3 text-center text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[70px]">
                         Status
-                    </th>
-                    <th class="px-2 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[70px]">
-                        Paid
-                    </th>
-                    <th class="px-2 py-3 text-center text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[80px]">
-                        Refund
                     </th>
                     <th class="px-2 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[70px]">
                         Refunded
@@ -222,7 +216,7 @@
                 <!-- Regular Players Section -->
                 {% if regular_players %}
                 <tr class="bg-green-50">
-                    <td colspan="{{ active_sessions|length + 8 }}" class="px-4 py-2 text-xs font-bold text-green-700 uppercase tracking-wider sticky left-0 bg-green-50">
+                    <td colspan="{{ active_sessions|length + 5 }}" class="px-4 py-2 text-xs font-bold text-green-700 uppercase tracking-wider sticky left-0 bg-green-50">
                         Regular Players ({{ regular_players|length }})
                     </td>
                 </tr>
@@ -302,23 +296,13 @@
                         </span>
                     </td>
                     <td class="px-2 py-2 text-center whitespace-nowrap">
-                        {% if balance <= 0 %}
+                        {% set pending_refunds = player.get_pending_refunds_count() %}
+                        {% if pending_refunds > 0 %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">Refund Pending</span>
+                        {% elif balance <= 0 %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
                         {% else %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
-                        {% endif %}
-                    </td>
-                    <td class="px-2 py-2 text-right whitespace-nowrap">
-                        <span class="text-sm font-medium text-green-600">${{ "%.2f"|format(player.get_total_payments()) }}</span>
-                    </td>
-                    <td class="px-2 py-2 text-center whitespace-nowrap">
-                        {% set pending_refunds = player.get_pending_refunds_count() %}
-                        {% if pending_refunds > 0 %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">
-                            Pending{% if pending_refunds > 1 %} ({{ pending_refunds }}){% endif %}
-                        </span>
-                        {% else %}
-                        <span class="text-gray-400 text-xs">-</span>
                         {% endif %}
                     </td>
                     <td class="px-2 py-2 text-right whitespace-nowrap">
@@ -336,7 +320,7 @@
                 <!-- Adhoc Players Section -->
                 {% if adhoc_players %}
                 <tr class="bg-purple-50">
-                    <td colspan="{{ active_sessions|length + 8 }}" class="px-4 py-2 text-xs font-bold text-purple-700 uppercase tracking-wider sticky left-0 bg-purple-50">
+                    <td colspan="{{ active_sessions|length + 5 }}" class="px-4 py-2 text-xs font-bold text-purple-700 uppercase tracking-wider sticky left-0 bg-purple-50">
                         Adhoc Players ({{ adhoc_players|length }})
                     </td>
                 </tr>
@@ -416,23 +400,13 @@
                         </span>
                     </td>
                     <td class="px-2 py-2 text-center whitespace-nowrap">
-                        {% if balance <= 0 %}
+                        {% set pending_refunds = player.get_pending_refunds_count() %}
+                        {% if pending_refunds > 0 %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">Refund Pending</span>
+                        {% elif balance <= 0 %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
                         {% else %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
-                        {% endif %}
-                    </td>
-                    <td class="px-2 py-2 text-right whitespace-nowrap">
-                        <span class="text-sm font-medium text-green-600">${{ "%.2f"|format(player.get_total_payments()) }}</span>
-                    </td>
-                    <td class="px-2 py-2 text-center whitespace-nowrap">
-                        {% set pending_refunds = player.get_pending_refunds_count() %}
-                        {% if pending_refunds > 0 %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">
-                            Pending{% if pending_refunds > 1 %} ({{ pending_refunds }}){% endif %}
-                        </span>
-                        {% else %}
-                        <span class="text-gray-400 text-xs">-</span>
                         {% endif %}
                     </td>
                     <td class="px-2 py-2 text-right whitespace-nowrap">
@@ -450,7 +424,7 @@
                 <!-- Kid Players Section -->
                 {% if kid_players %}
                 <tr class="bg-blue-50">
-                    <td colspan="{{ active_sessions|length + 8 }}" class="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider sticky left-0 bg-blue-50">
+                    <td colspan="{{ active_sessions|length + 5 }}" class="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider sticky left-0 bg-blue-50">
                         Kids ({{ kid_players|length }})
                     </td>
                 </tr>
@@ -522,23 +496,13 @@
                         </span>
                     </td>
                     <td class="px-2 py-2 text-center whitespace-nowrap">
-                        {% if balance <= 0 %}
+                        {% set pending_refunds = player.get_pending_refunds_count() %}
+                        {% if pending_refunds > 0 %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">Refund Pending</span>
+                        {% elif balance <= 0 %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
                         {% else %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
-                        {% endif %}
-                    </td>
-                    <td class="px-2 py-2 text-right whitespace-nowrap">
-                        <span class="text-sm font-medium text-green-600">${{ "%.2f"|format(player.get_total_payments()) }}</span>
-                    </td>
-                    <td class="px-2 py-2 text-center whitespace-nowrap">
-                        {% set pending_refunds = player.get_pending_refunds_count() %}
-                        {% if pending_refunds > 0 %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">
-                            Pending{% if pending_refunds > 1 %} ({{ pending_refunds }}){% endif %}
-                        </span>
-                        {% else %}
-                        <span class="text-gray-400 text-xs">-</span>
                         {% endif %}
                     </td>
                     <td class="px-2 py-2 text-right whitespace-nowrap">
