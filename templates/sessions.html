@@ -85,7 +85,7 @@
 {% endif %}
 
 <!-- Active Sessions - Attendance Matrix -->
-<div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 overflow-hidden mb-8" x-data="{ selectedSessions: [] }">
+<div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 overflow-hidden mb-8" x-data="{ selectedSessions: [], paymentFilter: 'all' }">
     <div class="px-6 py-4 border-b border-wimbledon-gold/20 bg-gradient-to-r from-wimbledon-cream to-white flex items-center justify-between">
         <h2 class="text-lg font-serif font-bold text-wimbledon-purple flex items-center">
             <svg class="w-5 h-5 mr-2 text-wimbledon-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,11 +139,32 @@
     </div>
 
     {% if active_sessions %}
-    <div class="overflow-x-auto">
+    <!-- Payment Status Filter -->
+    <div class="px-6 py-3 border-b border-wimbledon-gold/20 bg-gray-50 flex items-center gap-4">
+        <span class="text-sm font-medium text-gray-600">Filter by Payment:</span>
+        <div class="flex items-center gap-2">
+            <button @click="paymentFilter = 'all'"
+                :class="paymentFilter === 'all' ? 'bg-wimbledon-purple text-white' : 'bg-white text-gray-600 border border-gray-300'"
+                class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all">
+                All
+            </button>
+            <button @click="paymentFilter = 'paid'"
+                :class="paymentFilter === 'paid' ? 'bg-green-600 text-white' : 'bg-white text-gray-600 border border-gray-300'"
+                class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all">
+                Paid
+            </button>
+            <button @click="paymentFilter = 'unpaid'"
+                :class="paymentFilter === 'unpaid' ? 'bg-red-600 text-white' : 'bg-white text-gray-600 border border-gray-300'"
+                class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all">
+                Unpaid
+            </button>
+        </div>
+    </div>
+    <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
         <table class="min-w-full">
-            <thead>
+            <thead class="sticky top-0 z-20">
                 <tr class="bg-gradient-to-r from-wimbledon-cream to-white border-b border-wimbledon-gold/20">
-                    <th class="px-4 py-3 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider sticky left-0 bg-wimbledon-cream z-10 min-w-[220px]">
+                    <th class="px-4 py-3 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider sticky left-0 bg-wimbledon-cream z-30 min-w-[220px]">
                         Player
                     </th>
                     {% for session in active_sessions %}
@@ -191,7 +212,8 @@
                     </td>
                 </tr>
                 {% for player in regular_players %}
-                <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all">
+                <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all"
+                    x-show="paymentFilter === 'all' || (paymentFilter === 'paid' && {{ player.get_balance() }} <= 0) || (paymentFilter === 'unpaid' && {{ player.get_balance() }} > 0)">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
                         <div class="flex items-center space-x-2">
                             <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
@@ -274,7 +296,8 @@
                     </td>
                 </tr>
                 {% for player in adhoc_players %}
-                <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all">
+                <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all"
+                    x-show="paymentFilter === 'all' || (paymentFilter === 'paid' && {{ player.get_balance() }} <= 0) || (paymentFilter === 'unpaid' && {{ player.get_balance() }} > 0)">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
                         <div class="flex items-center space-x-2">
                             <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
