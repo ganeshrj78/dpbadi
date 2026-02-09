@@ -297,12 +297,12 @@
                     </td>
                     <td class="px-2 py-2 text-center whitespace-nowrap">
                         {% set pending_refunds = player.get_pending_refunds_count() %}
-                        {% if pending_refunds > 0 %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">Refund Pending</span>
-                        {% elif balance <= 0 %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
-                        {% else %}
+                        {% if balance > 0 %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
+                        {% elif pending_refunds > 0 %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">Refund Pending</span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
                         {% endif %}
                     </td>
                     <td class="px-2 py-2 text-right whitespace-nowrap">
@@ -401,12 +401,12 @@
                     </td>
                     <td class="px-2 py-2 text-center whitespace-nowrap">
                         {% set pending_refunds = player.get_pending_refunds_count() %}
-                        {% if pending_refunds > 0 %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">Refund Pending</span>
-                        {% elif balance <= 0 %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
-                        {% else %}
+                        {% if balance > 0 %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
+                        {% elif pending_refunds > 0 %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">Refund Pending</span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
                         {% endif %}
                     </td>
                     <td class="px-2 py-2 text-right whitespace-nowrap">
@@ -497,12 +497,12 @@
                     </td>
                     <td class="px-2 py-2 text-center whitespace-nowrap">
                         {% set pending_refunds = player.get_pending_refunds_count() %}
-                        {% if pending_refunds > 0 %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">Refund Pending</span>
-                        {% elif balance <= 0 %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
-                        {% else %}
+                        {% if balance > 0 %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
+                        {% elif pending_refunds > 0 %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">Refund Pending</span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
                         {% endif %}
                     </td>
                     <td class="px-2 py-2 text-right whitespace-nowrap">
