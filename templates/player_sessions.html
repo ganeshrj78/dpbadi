@@ -35,7 +35,7 @@
                     No
                 </button>
                 <button onclick="bulkUpdateAttendance('TENTATIVE')" class="px-3 py-1.5 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 transition-all">
-                    Maybe
+                    Tentative
                 </button>
             </div>
             {% endif %}
@@ -103,7 +103,7 @@
                                 class="px-3 py-1.5 rounded-lg font-bold text-sm border-2 {% if sess.voting_frozen %}cursor-not-allowed opacity-60{% else %}cursor-pointer{% endif %} transition-all">
                                 <option value="YES">Yes</option>
                                 <option value="NO">No</option>
-                                <option value="TENTATIVE">Maybe</option>
+                                <option value="TENTATIVE">Tentative</option>
                             </select>
                         </div>
                         <!-- Managed Players -->
@@ -125,7 +125,7 @@
                                 class="px-3 py-1.5 rounded-lg font-bold text-sm border-2 {% if sess.voting_frozen %}cursor-not-allowed opacity-60{% else %}cursor-pointer{% endif %} transition-all">
                                 <option value="YES">Yes</option>
                                 <option value="NO">No</option>
-                                <option value="TENTATIVE">Maybe</option>
+                                <option value="TENTATIVE">Tentative</option>
                             </select>
                         </div>
                         {% endfor %}
@@ -221,7 +221,7 @@
                                 {% else %}bg-gray-100 border-gray-300 text-gray-600{% endif %}">
                                 <option value="YES" {% if my_status == 'YES' %}selected{% endif %}>Yes</option>
                                 <option value="NO" {% if my_status == 'NO' %}selected{% endif %}>No</option>
-                                <option value="TENTATIVE" {% if my_status == 'TENTATIVE' %}selected{% endif %}>Maybe</option>
+                                <option value="TENTATIVE" {% if my_status == 'TENTATIVE' %}selected{% endif %}>Tentative</option>
                             </select>
                         </div>
                         <!-- Managed Players -->
@@ -236,7 +236,7 @@
                                 {% else %}bg-gray-100 border-gray-300 text-gray-600{% endif %}">
                                 <option value="YES" {% if mp_status == 'YES' %}selected{% endif %}>Yes</option>
                                 <option value="NO" {% if mp_status == 'NO' %}selected{% endif %}>No</option>
-                                <option value="TENTATIVE" {% if mp_status == 'TENTATIVE' %}selected{% endif %}>Maybe</option>
+                                <option value="TENTATIVE" {% if mp_status == 'TENTATIVE' %}selected{% endif %}>Tentative</option>
                             </select>
                         </div>
                         {% endfor %}
@@ -398,7 +398,7 @@ async function bulkUpdateAttendance(status) {
         return;
     }
 
-    if (!confirm(`Set all upcoming sessions to "${status === 'YES' ? 'Yes' : status === 'NO' ? 'No' : 'Maybe'}"?`)) {
+    if (!confirm(`Set all upcoming sessions to "${status === 'YES' ? 'Yes' : status === 'NO' ? 'No' : 'Tentative'}"?`)) {
         return;
     }
 
