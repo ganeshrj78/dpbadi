@@ -268,9 +268,13 @@
                 <tr class="hover:bg-wimbledon-cream/50 transition-all">
                     <td class="px-6 py-4 whitespace-nowrap">
                         <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-3 group">
+                            {% if player.profile_photo %}
+                            <img src="{{ url_for('static', filename='uploads/' + player.profile_photo) }}" alt="" class="w-10 h-10 rounded-full object-cover border-2 border-wimbledon-gold/30 shadow-md">
+                            {% else %}
                             <div class="w-10 h-10 gradient-primary rounded-full flex items-center justify-center text-white font-bold shadow-md border border-wimbledon-gold/30">
                                 {{ player.name[0].upper() }}
                             </div>
+                            {% endif %}
                             <div>
                                 <span class="font-semibold text-gray-800 group-hover:text-wimbledon-purple transition-colors">{{ player.name }}</span>
                                 {% if player.is_admin %}

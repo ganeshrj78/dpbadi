@@ -65,9 +65,13 @@
                 <div class="px-6 py-4 hover:bg-gradient-to-r hover:from-wimbledon-purple/5 hover:to-wimbledon-cream transition-all">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-3">
+                            {% if player.profile_photo %}
+                            <img src="{{ url_for('static', filename='uploads/' + player.profile_photo) }}" alt="" class="w-10 h-10 rounded-full object-cover border-2 border-wimbledon-gold/30 shadow-md">
+                            {% else %}
                             <div class="w-10 h-10 gradient-primary rounded-full flex items-center justify-center text-white font-bold shadow-md border border-wimbledon-gold/30">
                                 {{ player.name[0].upper() }}
                             </div>
+                            {% endif %}
                             <a href="{{ url_for('player_detail', id=player.id) }}" class="font-semibold text-gray-800 hover:text-wimbledon-purple transition-colors">
                                 {{ player.name }}
                             </a>
