@@ -363,9 +363,8 @@ def player_sessions():
     # Get managed players (spouse, kids, etc.)
     managed_players = player.managed_players
 
-    # Get upcoming sessions (not archived, future dates)
+    # Get active sessions (not archived) - includes past sessions until archived
     upcoming_sessions = Session.query.filter(
-        Session.date >= date.today(),
         Session.is_archived == False
     ).order_by(Session.date.asc()).all()
 
@@ -736,8 +735,8 @@ def reject_player(id):
 @app.route('/sessions')
 @admin_required
 def sessions():
-    # Active sessions (not archived)
-    active_sessions = Session.query.filter_by(is_archived=False).order_by(Session.date.desc()).all()
+    # Active sessions (not archived) - sorted by date ascending (earliest first)
+    active_sessions = Session.query.filter_by(is_archived=False).order_by(Session.date.asc()).all()
 
     # All sessions grouped by year and month for summary
     all_sessions = Session.query.order_by(Session.date.desc()).all()

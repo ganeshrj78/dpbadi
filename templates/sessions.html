@@ -196,10 +196,13 @@
                                 <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
                             </a>
                             <!-- Bulk Actions for Player -->
-                            <div class="flex items-center gap-1 ml-2">
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'YES')" title="Set all YES" class="w-6 h-6 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 text-xs">Y</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'NO')" title="Set all NO" class="w-6 h-6 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 text-xs">N</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'CLEAR')" title="Clear all" class="w-6 h-6 bg-gray-400 text-white rounded flex items-center justify-center hover:bg-gray-500 text-xs">C</button>
+                            <div class="flex items-center gap-0.5 ml-2">
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'YES')" title="Set all Yes" class="w-5 h-5 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 text-[10px]">Y</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'NO')" title="Set all No" class="w-5 h-5 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 text-[10px]">N</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'TENTATIVE')" title="Set all Tentative" class="w-5 h-5 bg-yellow-500 text-white rounded flex items-center justify-center hover:bg-yellow-600 text-[10px]">?</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'FILLIN')" title="Set all Fill-In" class="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600 text-[10px]">F</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'DROPOUT')" title="Set all Drop-Out" class="w-5 h-5 bg-orange-500 text-white rounded flex items-center justify-center hover:bg-orange-600 text-[10px]">D</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'CLEAR')" title="Clear all" class="w-5 h-5 bg-gray-400 text-white rounded flex items-center justify-center hover:bg-gray-500 text-[10px]">X</button>
                             </div>
                         </div>
                     </td>
@@ -307,10 +310,13 @@
                                 <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
                             </a>
                             <!-- Bulk Actions for Player -->
-                            <div class="flex items-center gap-1 ml-2">
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'YES')" title="Set all YES" class="w-6 h-6 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 text-xs">Y</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'NO')" title="Set all NO" class="w-6 h-6 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 text-xs">N</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'CLEAR')" title="Clear all" class="w-6 h-6 bg-gray-400 text-white rounded flex items-center justify-center hover:bg-gray-500 text-xs">C</button>
+                            <div class="flex items-center gap-0.5 ml-2">
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'YES')" title="Set all Yes" class="w-5 h-5 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 text-[10px]">Y</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'NO')" title="Set all No" class="w-5 h-5 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 text-[10px]">N</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'TENTATIVE')" title="Set all Tentative" class="w-5 h-5 bg-yellow-500 text-white rounded flex items-center justify-center hover:bg-yellow-600 text-[10px]">?</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'FILLIN')" title="Set all Fill-In" class="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600 text-[10px]">F</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'DROPOUT')" title="Set all Drop-Out" class="w-5 h-5 bg-orange-500 text-white rounded flex items-center justify-center hover:bg-orange-600 text-[10px]">D</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'CLEAR')" title="Clear all" class="w-5 h-5 bg-gray-400 text-white rounded flex items-center justify-center hover:bg-gray-500 text-[10px]">X</button>
                             </div>
                         </div>
                     </td>
