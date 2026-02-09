@@ -84,7 +84,7 @@
 </div>
 {% endif %}
 
-<!-- Active Sessions -->
+<!-- Active Sessions - Attendance Matrix -->
 <div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 overflow-hidden mb-8" x-data="{ selectedSessions: [] }">
     <div class="px-6 py-4 border-b border-wimbledon-gold/20 bg-gradient-to-r from-wimbledon-cream to-white flex items-center justify-between">
         <h2 class="text-lg font-serif font-bold text-wimbledon-purple flex items-center">
@@ -122,93 +122,355 @@
                     Archive Selected
                 </button>
             </form>
+            <!-- Bulk Attendance Actions -->
+            <div class="border-l border-gray-300 pl-3 ml-1 flex items-center gap-2">
+                <span class="text-xs text-gray-500">Set Status:</span>
+                <button type="button" @click="bulkSetAttendance(selectedSessions, 'regular', 'YES')" class="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-all">
+                    Regular YES
+                </button>
+                <button type="button" @click="bulkSetAttendance(selectedSessions, 'all', 'YES')" class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 transition-all">
+                    All YES
+                </button>
+                <button type="button" @click="bulkSetAttendance(selectedSessions, 'all', 'CLEAR')" class="px-3 py-1.5 bg-gray-400 text-white rounded-lg text-xs font-medium hover:bg-gray-500 transition-all">
+                    Clear All
+                </button>
+            </div>
         </div>
     </div>
+
+    {% if active_sessions %}
     <div class="overflow-x-auto">
         <table class="min-w-full">
             <thead>
                 <tr class="bg-gradient-to-r from-wimbledon-cream to-white border-b border-wimbledon-gold/20">
-                    <th class="px-4 py-4 text-center">
-                        <input type="checkbox"
-                            @change="selectedSessions = $event.target.checked ? [{% for s in active_sessions %}{{ s.id }}{% if not loop.last %},{% endif %}{% endfor %}] : []"
-                            class="w-4 h-4 rounded border-gray-300 text-wimbledon-purple focus:ring-wimbledon-purple">
+                    <th class="px-4 py-3 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider sticky left-0 bg-wimbledon-cream z-10 min-w-[220px]">
+                        Player
                     </th>
-                    <th class="px-6 py-4 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Date</th>
-                    <th class="px-6 py-4 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Time</th>
-                    <th class="px-6 py-4 text-center text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Courts</th>
-                    <th class="px-6 py-4 text-center text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Players</th>
-                    <th class="px-6 py-4 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Total Cost</th>
-                    <th class="px-6 py-4 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Per Player</th>
+                    {% for session in active_sessions %}
+                    <th class="px-2 py-3 text-center min-w-[80px]">
+                        <a href="{{ url_for('session_detail', id=session.id) }}" class="block hover:opacity-80 transition-opacity">
+                            <div class="flex flex-col items-center">
+                                <div class="w-12 h-12 bg-gradient-to-br from-wimbledon-purple/10 to-wimbledon-green/10 rounded-lg flex flex-col items-center justify-center shadow-sm border border-wimbledon-gold/30 relative mb-1">
+                                    <span class="text-sm font-bold text-wimbledon-purple">{{ session.date.strftime('%d') }}</span>
+                                    <span class="text-[10px] text-wimbledon-green uppercase">{{ session.date.strftime('%b') }}</span>
+                                    {% if session.voting_frozen %}
+                                    <div class="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center" title="Voting Frozen">
+                                        <svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <span class="text-[10px] text-gray-500">{{ session.date.strftime('%a') }}</span>
+                                <input type="checkbox" value="{{ session.id }}"
+                                    @change="$event.target.checked ? selectedSessions.push({{ session.id }}) : selectedSessions = selectedSessions.filter(id => id !== {{ session.id }})"
+                                    :checked="selectedSessions.includes({{ session.id }})"
+                                    class="mt-1 w-3 h-3 rounded border-gray-300 text-wimbledon-purple focus:ring-wimbledon-purple">
+                            </div>
+                        </a>
+                    </th>
+                    {% endfor %}
+                    <th class="px-2 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[80px]">
+                        Balance
+                    </th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-wimbledon-gold/10">
-                {% for session in active_sessions %}
-                {% set start_time, end_time = session.get_time_range() %}
-                <tr class="table-row-hover transition-all">
-                    <td class="px-4 py-4 text-center" @click.stop>
-                        <input type="checkbox"
-                            value="{{ session.id }}"
-                            @change="$event.target.checked ? selectedSessions.push({{ session.id }}) : selectedSessions = selectedSessions.filter(id => id !== {{ session.id }})"
-                            :checked="selectedSessions.includes({{ session.id }})"
-                            class="w-4 h-4 rounded border-gray-300 text-wimbledon-purple focus:ring-wimbledon-purple">
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap cursor-pointer" onclick="window.location='{{ url_for('session_detail', id=session.id) }}'">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-14 h-14 bg-gradient-to-br from-wimbledon-purple/10 to-wimbledon-green/10 rounded-xl flex flex-col items-center justify-center shadow-sm border border-wimbledon-gold/30 relative">
-                                <span class="text-lg font-bold text-wimbledon-purple">{{ session.date.strftime('%d') }}</span>
-                                <span class="text-xs text-wimbledon-green uppercase">{{ session.date.strftime('%b') }}</span>
-                                {% if session.voting_frozen %}
-                                <div class="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center" title="Voting Frozen">
-                                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                                </div>
-                                {% endif %}
-                            </div>
-                            <div>
-                                <div class="font-semibold text-gray-800">{{ session.date.strftime('%A') }}</div>
-                                <div class="text-sm text-gray-500">{{ session.date.strftime('%Y') }}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap cursor-pointer" onclick="window.location='{{ url_for('session_detail', id=session.id) }}'">
-                        <div class="flex items-center space-x-2">
-                            <svg class="w-5 h-5 text-wimbledon-purple/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            <span class="text-gray-600">{{ start_time }} - {{ end_time }}</span>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center cursor-pointer" onclick="window.location='{{ url_for('session_detail', id=session.id) }}'">
-                        <span class="px-4 py-2 bg-wimbledon-purple/10 text-wimbledon-purple rounded-full text-sm font-bold border border-wimbledon-purple/20">
-                            {{ session.get_court_count() }} court{% if session.get_court_count() > 1 %}s{% endif %}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center cursor-pointer" onclick="window.location='{{ url_for('session_detail', id=session.id) }}'">
-                        <span class="px-4 py-2 bg-wimbledon-green/10 text-wimbledon-green rounded-full text-sm font-bold border border-wimbledon-green/20">
-                            {{ session.get_attendee_count() }} player{% if session.get_attendee_count() != 1 %}s{% endif %}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right cursor-pointer" onclick="window.location='{{ url_for('session_detail', id=session.id) }}'">
-                        <span class="text-gray-800 font-semibold">${{ "%.2f"|format(session.get_total_cost()) }}</span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right cursor-pointer" onclick="window.location='{{ url_for('session_detail', id=session.id) }}'">
-                        <span class="px-3 py-1.5 gradient-gold text-wimbledon-purple-dark rounded-full text-sm font-bold shadow-md">
-                            ${{ "%.2f"|format(session.get_cost_per_player()) }}
-                        </span>
+            <tbody>
+                <!-- Regular Players Section -->
+                {% if regular_players %}
+                <tr class="bg-green-50">
+                    <td colspan="{{ active_sessions|length + 3 }}" class="px-4 py-2 text-xs font-bold text-green-700 uppercase tracking-wider sticky left-0 bg-green-50">
+                        Regular Players ({{ regular_players|length }})
                     </td>
                 </tr>
-                {% else %}
-                <tr>
-                    <td colspan="7" class="px-6 py-12 text-center">
-                        <svg class="w-16 h-16 mx-auto text-wimbledon-purple/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                        </svg>
-                        <p class="text-gray-500 font-medium">No active sessions</p>
-                        <p class="text-gray-400 text-sm mt-1">Create a new session to get started</p>
+                {% for player in regular_players %}
+                <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all">
+                    <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
+                        <div class="flex items-center space-x-2">
+                            <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
+                                {% if player.profile_photo %}
+                                <img src="{{ url_for('static', filename='uploads/' + player.profile_photo) }}" alt="" class="w-8 h-8 rounded-full object-cover border border-wimbledon-gold/30">
+                                {% else %}
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-wimbledon-purple to-wimbledon-green flex items-center justify-center text-white text-xs font-bold">
+                                    {{ player.name[0] }}
+                                </div>
+                                {% endif %}
+                                <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
+                            </a>
+                            <!-- Bulk Actions for Player -->
+                            <div class="flex items-center gap-1 ml-2">
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'YES')" title="Set all YES" class="w-6 h-6 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 text-xs">Y</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'NO')" title="Set all NO" class="w-6 h-6 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 text-xs">N</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'CLEAR')" title="Clear all" class="w-6 h-6 bg-gray-400 text-white rounded flex items-center justify-center hover:bg-gray-500 text-xs">C</button>
+                            </div>
+                        </div>
+                    </td>
+                    {% for session in active_sessions %}
+                    <td class="px-1 py-1 text-center">
+                        {% set status = attendance_map.get(session.id, {}).get(player.id, '') %}
+                        <select onchange="updateAttendance({{ session.id }}, {{ player.id }}, this.value)"
+                            class="w-20 text-xs py-1 px-1 rounded border
+                            {% if status == 'YES' %}bg-green-100 border-green-500 text-green-700
+                            {% elif status == 'NO' %}bg-red-100 border-red-500 text-red-700
+                            {% elif status == 'TENTATIVE' %}bg-yellow-100 border-yellow-500 text-yellow-700
+                            {% elif status == 'FILLIN' %}bg-blue-100 border-blue-500 text-blue-700
+                            {% elif status == 'DROPOUT' %}bg-orange-100 border-orange-500 text-orange-700
+                            {% else %}bg-gray-100 border-gray-300 text-gray-500{% endif %}">
+                            <option value="" {% if not status %}selected{% endif %}>--</option>
+                            <option value="YES" {% if status == 'YES' %}selected{% endif %}>Yes</option>
+                            <option value="NO" {% if status == 'NO' %}selected{% endif %}>No</option>
+                            <option value="TENTATIVE" {% if status == 'TENTATIVE' %}selected{% endif %}>Tentative</option>
+                            <option value="FILLIN" {% if status == 'FILLIN' %}selected{% endif %}>Fill-In</option>
+                            <option value="DROPOUT" {% if status == 'DROPOUT' %}selected{% endif %}>Drop-Out</option>
+                        </select>
+                    </td>
+                    {% endfor %}
+                    <td class="px-2 py-2 text-right whitespace-nowrap">
+                        {% set balance = player.get_balance() %}
+                        <span class="text-sm font-bold {% if balance > 0 %}text-red-600{% elif balance < 0 %}text-green-600{% else %}text-gray-500{% endif %}">
+                            ${{ "%.2f"|format(balance) }}
+                        </span>
                     </td>
                 </tr>
                 {% endfor %}
+                {% endif %}
+
+                <!-- Adhoc Players Section -->
+                {% if adhoc_players %}
+                <tr class="bg-purple-50">
+                    <td colspan="{{ active_sessions|length + 3 }}" class="px-4 py-2 text-xs font-bold text-purple-700 uppercase tracking-wider sticky left-0 bg-purple-50">
+                        Adhoc Players ({{ adhoc_players|length }})
+                    </td>
+                </tr>
+                {% for player in adhoc_players %}
+                <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all">
+                    <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
+                        <div class="flex items-center space-x-2">
+                            <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
+                                {% if player.profile_photo %}
+                                <img src="{{ url_for('static', filename='uploads/' + player.profile_photo) }}" alt="" class="w-8 h-8 rounded-full object-cover border border-wimbledon-gold/30">
+                                {% else %}
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-white text-xs font-bold">
+                                    {{ player.name[0] }}
+                                </div>
+                                {% endif %}
+                                <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
+                            </a>
+                    </td>
+                    {% for session in active_sessions %}
+                    <td class="px-1 py-1 text-center">
+                        {% set status = attendance_map.get(session.id, {}).get(player.id, '') %}
+                        <select onchange="updateAttendance({{ session.id }}, {{ player.id }}, this.value)"
+                            class="w-20 text-xs py-1 px-1 rounded border
+                            {% if status == 'YES' %}bg-green-100 border-green-500 text-green-700
+                            {% elif status == 'NO' %}bg-red-100 border-red-500 text-red-700
+                            {% elif status == 'TENTATIVE' %}bg-yellow-100 border-yellow-500 text-yellow-700
+                            {% elif status == 'FILLIN' %}bg-blue-100 border-blue-500 text-blue-700
+                            {% elif status == 'DROPOUT' %}bg-orange-100 border-orange-500 text-orange-700
+                            {% else %}bg-gray-100 border-gray-300 text-gray-500{% endif %}">
+                            <option value="" {% if not status %}selected{% endif %}>--</option>
+                            <option value="YES" {% if status == 'YES' %}selected{% endif %}>Yes</option>
+                            <option value="NO" {% if status == 'NO' %}selected{% endif %}>No</option>
+                            <option value="TENTATIVE" {% if status == 'TENTATIVE' %}selected{% endif %}>Tentative</option>
+                            <option value="FILLIN" {% if status == 'FILLIN' %}selected{% endif %}>Fill-In</option>
+                            <option value="DROPOUT" {% if status == 'DROPOUT' %}selected{% endif %}>Drop-Out</option>
+                        </select>
+                    </td>
+                    {% endfor %}
+                    <td class="px-2 py-2 text-right whitespace-nowrap">
+                        {% set balance = player.get_balance() %}
+                        <span class="text-sm font-bold {% if balance > 0 %}text-red-600{% elif balance < 0 %}text-green-600{% else %}text-gray-500{% endif %}">
+                            ${{ "%.2f"|format(balance) }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+
+                <!-- Kid Players Section -->
+                {% if kid_players %}
+                <tr class="bg-blue-50">
+                    <td colspan="{{ active_sessions|length + 3 }}" class="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider sticky left-0 bg-blue-50">
+                        Kids ({{ kid_players|length }})
+                    </td>
+                </tr>
+                {% for player in kid_players %}
+                <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all">
+                    <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
+                        <div class="flex items-center space-x-2">
+                            <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
+                                {% if player.profile_photo %}
+                                <img src="{{ url_for('static', filename='uploads/' + player.profile_photo) }}" alt="" class="w-8 h-8 rounded-full object-cover border border-wimbledon-gold/30">
+                                {% else %}
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-xs font-bold">
+                                    {{ player.name[0] }}
+                                </div>
+                                {% endif %}
+                                <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
+                            </a>
+                            <!-- Bulk Actions for Player -->
+                            <div class="flex items-center gap-1 ml-2">
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'YES')" title="Set all YES" class="w-6 h-6 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 text-xs">Y</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'NO')" title="Set all NO" class="w-6 h-6 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 text-xs">N</button>
+                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'CLEAR')" title="Clear all" class="w-6 h-6 bg-gray-400 text-white rounded flex items-center justify-center hover:bg-gray-500 text-xs">C</button>
+                            </div>
+                        </div>
+                    </td>
+                    {% for session in active_sessions %}
+                    <td class="px-1 py-1 text-center">
+                        {% set status = attendance_map.get(session.id, {}).get(player.id, '') %}
+                        <select onchange="updateAttendance({{ session.id }}, {{ player.id }}, this.value)"
+                            class="w-20 text-xs py-1 px-1 rounded border
+                            {% if status == 'YES' %}bg-green-100 border-green-500 text-green-700
+                            {% elif status == 'NO' %}bg-red-100 border-red-500 text-red-700
+                            {% elif status == 'TENTATIVE' %}bg-yellow-100 border-yellow-500 text-yellow-700
+                            {% elif status == 'FILLIN' %}bg-blue-100 border-blue-500 text-blue-700
+                            {% elif status == 'DROPOUT' %}bg-orange-100 border-orange-500 text-orange-700
+                            {% else %}bg-gray-100 border-gray-300 text-gray-500{% endif %}">
+                            <option value="" {% if not status %}selected{% endif %}>--</option>
+                            <option value="YES" {% if status == 'YES' %}selected{% endif %}>Yes</option>
+                            <option value="NO" {% if status == 'NO' %}selected{% endif %}>No</option>
+                            <option value="TENTATIVE" {% if status == 'TENTATIVE' %}selected{% endif %}>Tentative</option>
+                            <option value="FILLIN" {% if status == 'FILLIN' %}selected{% endif %}>Fill-In</option>
+                            <option value="DROPOUT" {% if status == 'DROPOUT' %}selected{% endif %}>Drop-Out</option>
+                        </select>
+                    </td>
+                    {% endfor %}
+                    <td class="px-2 py-2 text-right whitespace-nowrap">
+                        {% set balance = player.get_balance() %}
+                        <span class="text-sm font-bold {% if balance > 0 %}text-red-600{% elif balance < 0 %}text-green-600{% else %}text-gray-500{% endif %}">
+                            ${{ "%.2f"|format(balance) }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+
+                <!-- Session Summary Row -->
+                <tr class="bg-wimbledon-cream/50 border-t-2 border-wimbledon-gold/30">
+                    <td class="px-4 py-3 font-bold text-wimbledon-purple sticky left-0 bg-wimbledon-cream/50 z-10">
+                        Session Totals
+                    </td>
+                    {% for session in active_sessions %}
+                    <td class="px-2 py-3 text-center">
+                        <div class="flex flex-col items-center text-xs">
+                            <span class="font-bold text-wimbledon-green">{{ session.get_attendee_count() }}</span>
+                            <span class="text-gray-500">${{ "%.0f"|format(session.get_cost_per_player()) }}</span>
+                        </div>
+                    </td>
+                    {% endfor %}
+                    <td class="px-2 py-3"></td>
+                </tr>
             </tbody>
         </table>
     </div>
+    {% else %}
+    <div class="px-6 py-12 text-center">
+        <svg class="w-16 h-16 mx-auto text-wimbledon-purple/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
+        <p class="text-gray-500 font-medium">No active sessions</p>
+        <p class="text-gray-400 text-sm mt-1">Create a new session to get started</p>
+    </div>
+    {% endif %}
 </div>
+
+<!-- JavaScript for attendance management -->
+<script>
+// Update single attendance via dropdown
+function updateAttendance(sessionId, playerId, status) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    fetch('/api/attendance', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            session_id: sessionId,
+            player_id: playerId,
+            status: status || 'CLEAR'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to update attendance');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update attendance');
+    });
+}
+
+// Bulk set attendance for a player across all active sessions
+function bulkSetPlayerAttendance(playerId, status) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const sessionIds = [{% for s in active_sessions %}{{ s.id }}{% if not loop.last %},{% endif %}{% endfor %}];
+
+    fetch('/api/bulk-player-attendance', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            player_id: playerId,
+            session_ids: sessionIds,
+            status: status
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to update attendance');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update attendance');
+    });
+}
+
+// Bulk set attendance for sessions (existing functionality)
+function bulkSetAttendance(sessionIds, category, status) {
+    if (!sessionIds || sessionIds.length === 0) {
+        alert('Please select at least one session');
+        return;
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    fetch('/api/bulk-attendance', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            session_ids: sessionIds,
+            category: category,
+            status: status
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to update attendance');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update attendance');
+    });
+}
+</script>
 
 <!-- Archived Sessions -->
 {% if archived_groups %}

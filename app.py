@@ -795,10 +795,26 @@ def sessions():
     # Sort by key (year-month) descending
     archived_sorted = sorted(archived_grouped.items(), key=lambda x: x[0], reverse=True)
 
+    # Get all active players grouped by category for the attendance matrix
+    regular_players = Player.query.filter_by(is_active=True, category='regular').order_by(Player.name).all()
+    adhoc_players = Player.query.filter_by(is_active=True, category='adhoc').order_by(Player.name).all()
+    kid_players = Player.query.filter_by(is_active=True, category='kid').order_by(Player.name).all()
+
+    # Build attendance map: {session_id: {player_id: status}}
+    attendance_map = {}
+    for sess in active_sessions:
+        attendance_map[sess.id] = {}
+        for att in sess.attendances.all():
+            attendance_map[sess.id][att.player_id] = att.status
+
     return render_template('sessions.html',
                           active_sessions=active_sessions,
                           archived_groups=archived_sorted,
-                          monthly_summary=monthly_sorted)
+                          monthly_summary=monthly_sorted,
+                          regular_players=regular_players,
+                          adhoc_players=adhoc_players,
+                          kid_players=kid_players,
+                          attendance_map=attendance_map)
 
 
 @app.route('/sessions/add', methods=['GET', 'POST'])
@@ -1025,6 +1041,109 @@ def bulk_unfreeze_voting():
     db.session.commit()
     flash(f'Voting unfrozen for {count} session(s)!', 'success')
     return redirect(url_for('sessions'))
+
+
+@app.route('/api/bulk-attendance', methods=['POST'])
+@admin_required
+def bulk_attendance():
+    """Bulk update attendance for selected sessions"""
+    data = request.get_json()
+    session_ids = data.get('session_ids', [])
+    category = data.get('category', 'all')  # 'regular', 'adhoc', 'kid', or 'all'
+    status = data.get('status', 'YES')  # 'YES', 'NO', 'TENTATIVE', or 'CLEAR'
+
+    if not session_ids:
+        return jsonify({'success': False, 'error': 'No sessions selected'})
+
+    # Get players based on category
+    if category == 'regular':
+        players = Player.query.filter_by(is_active=True, category='regular').all()
+    elif category == 'adhoc':
+        players = Player.query.filter_by(is_active=True, category='adhoc').all()
+    elif category == 'kid':
+        players = Player.query.filter_by(is_active=True, category='kid').all()
+    else:
+        players = Player.query.filter_by(is_active=True).all()
+
+    count = 0
+    for session_id in session_ids:
+        sess = Session.query.get(int(session_id))
+        if not sess:
+            continue
+
+        for player in players:
+            # Find existing attendance or create new
+            attendance = Attendance.query.filter_by(session_id=session_id, player_id=player.id).first()
+
+            if status == 'CLEAR':
+                if attendance:
+                    db.session.delete(attendance)
+                    count += 1
+            else:
+                if attendance:
+                    attendance.status = status
+                    attendance.category = player.category
+                else:
+                    attendance = Attendance(
+                        session_id=session_id,
+                        player_id=player.id,
+                        status=status,
+                        category=player.category
+                    )
+                    db.session.add(attendance)
+                count += 1
+
+    db.session.commit()
+    return jsonify({'success': True, 'count': count})
+
+
+@app.route('/api/bulk-player-attendance', methods=['POST'])
+@admin_required
+def bulk_player_attendance():
+    """Bulk update attendance for a single player across multiple sessions"""
+    data = request.get_json()
+    player_id = data.get('player_id')
+    session_ids = data.get('session_ids', [])
+    status = data.get('status', 'YES')
+
+    if not player_id:
+        return jsonify({'success': False, 'error': 'No player specified'})
+
+    if not session_ids:
+        return jsonify({'success': False, 'error': 'No sessions specified'})
+
+    player = Player.query.get(player_id)
+    if not player:
+        return jsonify({'success': False, 'error': 'Player not found'})
+
+    count = 0
+    for session_id in session_ids:
+        sess = Session.query.get(int(session_id))
+        if not sess:
+            continue
+
+        attendance = Attendance.query.filter_by(session_id=session_id, player_id=player_id).first()
+
+        if status == 'CLEAR':
+            if attendance:
+                db.session.delete(attendance)
+                count += 1
+        else:
+            if attendance:
+                attendance.status = status
+                attendance.category = player.category
+            else:
+                attendance = Attendance(
+                    session_id=session_id,
+                    player_id=player_id,
+                    status=status,
+                    category=player.category
+                )
+                db.session.add(attendance)
+            count += 1
+
+    db.session.commit()
+    return jsonify({'success': True, 'count': count})
 
 
 # Dropout Refund routes
