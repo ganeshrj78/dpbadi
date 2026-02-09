@@ -122,19 +122,6 @@
                     Archive Selected
                 </button>
             </form>
-            <!-- Bulk Attendance Actions -->
-            <div class="border-l border-gray-300 pl-3 ml-1 flex items-center gap-2">
-                <span class="text-xs text-gray-500">Set Status:</span>
-                <button type="button" @click="bulkSetAttendance(selectedSessions, 'regular', 'YES')" class="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-all">
-                    Regular YES
-                </button>
-                <button type="button" @click="bulkSetAttendance(selectedSessions, 'all', 'YES')" class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 transition-all">
-                    All YES
-                </button>
-                <button type="button" @click="bulkSetAttendance(selectedSessions, 'all', 'CLEAR')" class="px-3 py-1.5 bg-gray-400 text-white rounded-lg text-xs font-medium hover:bg-gray-500 transition-all">
-                    Clear All
-                </button>
-            </div>
         </div>
     </div>
 
@@ -197,6 +184,12 @@
                                     {% endif %}
                                 </div>
                                 <span class="text-[10px] text-gray-500">{{ session.date.strftime('%a') }}</span>
+                                <!-- Session Totals -->
+                                <div class="flex items-center gap-1 mt-1">
+                                    <span class="text-[10px] font-bold text-wimbledon-green">{{ session.get_attendee_count() }}</span>
+                                    <span class="text-[10px] text-gray-400">|</span>
+                                    <span class="text-[10px] text-gray-500">${{ "%.0f"|format(session.get_cost_per_player()) }}</span>
+                                </div>
                                 <input type="checkbox" value="{{ session.id }}"
                                     @change="$event.target.checked ? selectedSessions.push({{ session.id }}) : selectedSessions = selectedSessions.filter(id => id !== {{ session.id }})"
                                     :checked="selectedSessions.includes({{ session.id }})"
@@ -242,15 +235,6 @@
                                 {% endif %}
                                 <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
                             </a>
-                            <!-- Bulk Actions for Player -->
-                            <div class="flex items-center gap-0.5 ml-2">
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'YES')" title="Yes" class="w-5 h-5 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 text-[10px]">Y</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'NO')" title="No" class="w-5 h-5 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 text-[10px]">N</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'TENTATIVE')" title="Tentative" class="w-5 h-5 bg-yellow-500 text-white rounded flex items-center justify-center hover:bg-yellow-600 text-[10px]">?</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'FILLIN')" title="Fill-In" class="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600 text-[10px]">F</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'DROPOUT')" title="Drop-Out" class="w-5 h-5 bg-orange-500 text-white rounded flex items-center justify-center hover:bg-orange-600 text-[10px]">D</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'CLEAR')" title="Clear" class="w-5 h-5 bg-gray-400 text-white rounded flex items-center justify-center hover:bg-gray-500 text-[10px]">X</button>
-                            </div>
                         </div>
                     </td>
                     {% for session in active_sessions %}
@@ -326,15 +310,6 @@
                                 {% endif %}
                                 <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
                             </a>
-                            <!-- Bulk Actions for Player -->
-                            <div class="flex items-center gap-0.5 ml-2">
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'YES')" title="Yes" class="w-5 h-5 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 text-[10px]">Y</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'NO')" title="No" class="w-5 h-5 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 text-[10px]">N</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'TENTATIVE')" title="Tentative" class="w-5 h-5 bg-yellow-500 text-white rounded flex items-center justify-center hover:bg-yellow-600 text-[10px]">?</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'FILLIN')" title="Fill-In" class="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600 text-[10px]">F</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'DROPOUT')" title="Drop-Out" class="w-5 h-5 bg-orange-500 text-white rounded flex items-center justify-center hover:bg-orange-600 text-[10px]">D</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'CLEAR')" title="Clear" class="w-5 h-5 bg-gray-400 text-white rounded flex items-center justify-center hover:bg-gray-500 text-[10px]">X</button>
-                            </div>
                         </div>
                     </td>
                     {% for session in active_sessions %}
@@ -410,15 +385,6 @@
                                 {% endif %}
                                 <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
                             </a>
-                            <!-- Bulk Actions for Player -->
-                            <div class="flex items-center gap-0.5 ml-2">
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'YES')" title="Yes" class="w-5 h-5 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 text-[10px]">Y</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'NO')" title="No" class="w-5 h-5 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600 text-[10px]">N</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'TENTATIVE')" title="Tentative" class="w-5 h-5 bg-yellow-500 text-white rounded flex items-center justify-center hover:bg-yellow-600 text-[10px]">?</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'FILLIN')" title="Fill-In" class="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600 text-[10px]">F</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'DROPOUT')" title="Drop-Out" class="w-5 h-5 bg-orange-500 text-white rounded flex items-center justify-center hover:bg-orange-600 text-[10px]">D</button>
-                                <button onclick="bulkSetPlayerAttendance({{ player.id }}, 'CLEAR')" title="Clear" class="w-5 h-5 bg-gray-400 text-white rounded flex items-center justify-center hover:bg-gray-500 text-[10px]">X</button>
-                            </div>
                         </div>
                     </td>
                     {% for session in active_sessions %}
@@ -464,24 +430,6 @@
                 {% endfor %}
                 {% endif %}
 
-                <!-- Session Summary Row -->
-                <tr class="bg-wimbledon-cream/50 border-t-2 border-wimbledon-gold/30">
-                    <td class="px-4 py-3 font-bold text-wimbledon-purple sticky left-0 bg-wimbledon-cream/50 z-10">
-                        Session Totals
-                    </td>
-                    {% for session in active_sessions %}
-                    <td class="px-2 py-3 text-center">
-                        <div class="flex flex-col items-center text-xs">
-                            <span class="font-bold text-wimbledon-green">{{ session.get_attendee_count() }}</span>
-                            <span class="text-gray-500">${{ "%.0f"|format(session.get_cost_per_player()) }}</span>
-                        </div>
-                    </td>
-                    {% endfor %}
-                    <td class="px-2 py-3"></td>
-                    <td class="px-2 py-3"></td>
-                    <td class="px-2 py-3"></td>
-                    <td class="px-2 py-3"></td>
-                </tr>
             </tbody>
         </table>
     </div>
@@ -528,71 +476,6 @@ function updateAttendance(sessionId, playerId, status) {
     });
 }
 
-// Bulk set attendance for a player across all active sessions
-function bulkSetPlayerAttendance(playerId, status) {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    const sessionIds = [{% for s in active_sessions %}{{ s.id }}{% if not loop.last %},{% endif %}{% endfor %}];
-
-    fetch('/api/bulk-player-attendance', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
-        },
-        body: JSON.stringify({
-            player_id: playerId,
-            session_ids: sessionIds,
-            status: status
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert(data.error || 'Failed to update attendance');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to update attendance');
-    });
-}
-
-// Bulk set attendance for sessions (existing functionality)
-function bulkSetAttendance(sessionIds, category, status) {
-    if (!sessionIds || sessionIds.length === 0) {
-        alert('Please select at least one session');
-        return;
-    }
-
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-    fetch('/api/bulk-attendance', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
-        },
-        body: JSON.stringify({
-            session_ids: sessionIds,
-            category: category,
-            status: status
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert(data.error || 'Failed to update attendance');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to update attendance');
-    });
-}
 </script>
 
 <!-- Archived Sessions -->
