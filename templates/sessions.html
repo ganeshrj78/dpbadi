@@ -174,13 +174,19 @@
                     <th class="px-2 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[80px]">
                         Balance
                     </th>
+                    <th class="px-2 py-3 text-center text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[70px]">
+                        Status
+                    </th>
+                    <th class="px-2 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[70px]">
+                        Paid
+                    </th>
                 </tr>
             </thead>
             <tbody>
                 <!-- Regular Players Section -->
                 {% if regular_players %}
                 <tr class="bg-green-50">
-                    <td colspan="{{ active_sessions|length + 4 }}" class="px-4 py-2 text-xs font-bold text-green-700 uppercase tracking-wider sticky left-0 bg-green-50">
+                    <td colspan="{{ active_sessions|length + 6 }}" class="px-4 py-2 text-xs font-bold text-green-700 uppercase tracking-wider sticky left-0 bg-green-50">
                         Regular Players ({{ regular_players|length }})
                     </td>
                 </tr>
@@ -246,6 +252,16 @@
                             ${{ "%.2f"|format(balance) }}
                         </span>
                     </td>
+                    <td class="px-2 py-2 text-center whitespace-nowrap">
+                        {% if balance <= 0 %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-2 py-2 text-right whitespace-nowrap">
+                        <span class="text-sm font-medium text-green-600">${{ "%.2f"|format(player.get_total_payments()) }}</span>
+                    </td>
                 </tr>
                 {% endfor %}
                 {% endif %}
@@ -253,7 +269,7 @@
                 <!-- Adhoc Players Section -->
                 {% if adhoc_players %}
                 <tr class="bg-purple-50">
-                    <td colspan="{{ active_sessions|length + 4 }}" class="px-4 py-2 text-xs font-bold text-purple-700 uppercase tracking-wider sticky left-0 bg-purple-50">
+                    <td colspan="{{ active_sessions|length + 6 }}" class="px-4 py-2 text-xs font-bold text-purple-700 uppercase tracking-wider sticky left-0 bg-purple-50">
                         Adhoc Players ({{ adhoc_players|length }})
                     </td>
                 </tr>
@@ -319,6 +335,16 @@
                             ${{ "%.2f"|format(balance) }}
                         </span>
                     </td>
+                    <td class="px-2 py-2 text-center whitespace-nowrap">
+                        {% if balance <= 0 %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-2 py-2 text-right whitespace-nowrap">
+                        <span class="text-sm font-medium text-green-600">${{ "%.2f"|format(player.get_total_payments()) }}</span>
+                    </td>
                 </tr>
                 {% endfor %}
                 {% endif %}
@@ -326,7 +352,7 @@
                 <!-- Kid Players Section -->
                 {% if kid_players %}
                 <tr class="bg-blue-50">
-                    <td colspan="{{ active_sessions|length + 4 }}" class="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider sticky left-0 bg-blue-50">
+                    <td colspan="{{ active_sessions|length + 6 }}" class="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider sticky left-0 bg-blue-50">
                         Kids ({{ kid_players|length }})
                     </td>
                 </tr>
@@ -384,6 +410,16 @@
                             ${{ "%.2f"|format(balance) }}
                         </span>
                     </td>
+                    <td class="px-2 py-2 text-center whitespace-nowrap">
+                        {% if balance <= 0 %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-2 py-2 text-right whitespace-nowrap">
+                        <span class="text-sm font-medium text-green-600">${{ "%.2f"|format(player.get_total_payments()) }}</span>
+                    </td>
                 </tr>
                 {% endfor %}
                 {% endif %}
@@ -401,6 +437,8 @@
                         </div>
                     </td>
                     {% endfor %}
+                    <td class="px-2 py-3"></td>
+                    <td class="px-2 py-3"></td>
                     <td class="px-2 py-3"></td>
                     <td class="px-2 py-3"></td>
                 </tr>
