@@ -46,9 +46,10 @@ class Player(db.Model):
         return check_password_hash(self.password_hash, password)
 
     def get_total_charges(self):
-        """Calculate total charges from attended sessions based on player category"""
+        """Calculate total charges from attended sessions based on player category.
+        Includes YES, DROPOUT, and FILLIN statuses - dropouts and fill-ins are still charged."""
         total = 0
-        for attendance in self.attendances.filter_by(status='YES').all():
+        for attendance in self.attendances.filter(Attendance.status.in_(['YES', 'DROPOUT', 'FILLIN'])).all():
             session = attendance.session
             if attendance.category == 'kid':
                 # Kids pay flat $11 per session
@@ -103,20 +104,29 @@ class Session(db.Model):
     courts = db.relationship('Court', backref='session', lazy='dynamic', cascade='all, delete-orphan', order_by='Court.id')
 
     def get_attendee_count(self):
-        """Count players who attended (status=YES)"""
-        return self.attendances.filter_by(status='YES').count()
+        """Count players who attended (status=YES) plus dropouts (for frozen sessions, dropouts still count toward cost calculation)"""
+        return self.attendances.filter(Attendance.status.in_(['YES', 'DROPOUT'])).count()
 
     def get_regular_player_count(self):
-        """Count regular players who attended (status=YES)"""
-        return self.attendances.filter_by(status='YES', category='regular').count()
+        """Count regular players who attended (status=YES or DROPOUT - dropouts still count for frozen session cost calculation)"""
+        return self.attendances.filter(
+            Attendance.status.in_(['YES', 'DROPOUT']),
+            Attendance.category == 'regular'
+        ).count()
 
     def get_adhoc_player_count(self):
-        """Count adhoc players who attended (status=YES)"""
-        return self.attendances.filter_by(status='YES', category='adhoc').count()
+        """Count adhoc players who attended (status=YES or DROPOUT - dropouts still count for frozen session cost calculation)"""
+        return self.attendances.filter(
+            Attendance.status.in_(['YES', 'DROPOUT']),
+            Attendance.category == 'adhoc'
+        ).count()
 
     def get_kid_player_count(self):
-        """Count kid players who attended (status=YES)"""
-        return self.attendances.filter_by(status='YES', category='kid').count()
+        """Count kid players who attended (status=YES or DROPOUT - dropouts still count for frozen session cost calculation)"""
+        return self.attendances.filter(
+            Attendance.status.in_(['YES', 'DROPOUT']),
+            Attendance.category == 'kid'
+        ).count()
 
     def get_court_count(self):
         """Get number of courts booked"""
@@ -215,12 +225,13 @@ class Session(db.Model):
     def get_total_collection(self):
         """
         Calculate total expected collection from players for this session.
+        Includes YES, DROPOUT, and FILLIN - all are charged.
         - Regular players: regular court cost / regular count + birdie
         - Adhoc players: adhoc court cost / adhoc count + birdie
         - Kids: flat $11
         """
         total = 0
-        for attendance in self.attendances.filter_by(status='YES').all():
+        for attendance in self.attendances.filter(Attendance.status.in_(['YES', 'DROPOUT', 'FILLIN'])).all():
             if attendance.category == 'kid':
                 total += self.get_cost_per_kid()
             elif attendance.category == 'adhoc':
