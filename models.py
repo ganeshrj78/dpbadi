@@ -467,3 +467,31 @@ class BirdieBank(db.Model):
     def get_total_spent():
         """Calculate total amount spent on birdies"""
         return db.session.query(db.func.sum(BirdieBank.cost)).filter_by(transaction_type='purchase').scalar() or 0
+
+
+class SiteSettings(db.Model):
+    """Store site-wide settings and content like guidelines"""
+    __tablename__ = 'site_settings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    value = db.Column(db.Text)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @staticmethod
+    def get(key, default=None):
+        """Get a setting value by key"""
+        setting = SiteSettings.query.filter_by(key=key).first()
+        return setting.value if setting else default
+
+    @staticmethod
+    def set(key, value):
+        """Set a setting value"""
+        setting = SiteSettings.query.filter_by(key=key).first()
+        if setting:
+            setting.value = value
+        else:
+            setting = SiteSettings(key=key, value=value)
+            db.session.add(setting)
+        db.session.commit()
+        return setting

@@ -7,7 +7,7 @@ import uuid
 import logging
 from logging.handlers import RotatingFileHandler
 from config import Config
-from models import db, Player, Session, Court, Attendance, Payment, BirdieBank, DropoutRefund
+from models import db, Player, Session, Court, Attendance, Payment, BirdieBank, DropoutRefund, SiteSettings
 from sqlalchemy import func
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
@@ -145,11 +145,15 @@ def login():
                 if not player.is_approved:
                     security_logger.info(f'LOGIN_PENDING_APPROVAL - Email: {email}, IP: {client_ip}')
                     flash('Your registration is pending approval. Please wait for admin approval.', 'error')
-                    return render_template('login.html')
+                    return render_template('login.html',
+                                           member_guidelines=SiteSettings.get('member_guidelines', ''),
+                                           booking_guidelines=SiteSettings.get('booking_guidelines', ''))
                 if not player.is_active:
                     security_logger.warning(f'LOGIN_INACTIVE_ACCOUNT - Email: {email}, IP: {client_ip}')
                     flash('Your account has been deactivated. Please contact an admin.', 'error')
-                    return render_template('login.html')
+                    return render_template('login.html',
+                                           member_guidelines=SiteSettings.get('member_guidelines', ''),
+                                           booking_guidelines=SiteSettings.get('booking_guidelines', ''))
                 session['authenticated'] = True
                 session['player_id'] = player.id
                 if player.is_admin:
@@ -165,7 +169,9 @@ def login():
             security_logger.warning(f'PLAYER_LOGIN_FAILED - Email: {email}, IP: {client_ip}')
             flash('Invalid email or password', 'error')
 
-    return render_template('login.html')
+    return render_template('login.html',
+                           member_guidelines=SiteSettings.get('member_guidelines', ''),
+                           booking_guidelines=SiteSettings.get('booking_guidelines', ''))
 
 
 @app.route('/logout')
@@ -191,22 +197,30 @@ def register():
         # Validation
         if not name or not email or not password:
             flash('Name, email, and password are required', 'error')
-            return render_template('register.html')
+            return render_template('register.html',
+                               member_guidelines=SiteSettings.get('member_guidelines', ''),
+                               booking_guidelines=SiteSettings.get('booking_guidelines', ''))
 
         if password != confirm_password:
             flash('Passwords do not match', 'error')
-            return render_template('register.html')
+            return render_template('register.html',
+                               member_guidelines=SiteSettings.get('member_guidelines', ''),
+                               booking_guidelines=SiteSettings.get('booking_guidelines', ''))
 
         if len(password) < 4:
             flash('Password must be at least 4 characters', 'error')
-            return render_template('register.html')
+            return render_template('register.html',
+                               member_guidelines=SiteSettings.get('member_guidelines', ''),
+                               booking_guidelines=SiteSettings.get('booking_guidelines', ''))
 
         # Check if email already exists
         existing_player = Player.query.filter(db.func.lower(Player.email) == email).first()
         if existing_player:
             security_logger.warning(f'REGISTRATION_DUPLICATE_EMAIL - Email: {email}, IP: {client_ip}')
             flash('An account with this email already exists. Please contact an admin to reset your password.', 'error')
-            return render_template('register.html')
+            return render_template('register.html',
+                               member_guidelines=SiteSettings.get('member_guidelines', ''),
+                               booking_guidelines=SiteSettings.get('booking_guidelines', ''))
 
         # Create new player (pending approval)
         player = Player(
@@ -226,13 +240,50 @@ def register():
         flash('Registration successful! Please wait for admin approval.', 'success')
         return redirect(url_for('login'))
 
-    return render_template('register.html')
+    return render_template('register.html',
+                               member_guidelines=SiteSettings.get('member_guidelines', ''),
+                               booking_guidelines=SiteSettings.get('booking_guidelines', ''))
 
 
 # Health check endpoint for uptime monitoring (keeps Render from sleeping)
 @app.route('/health')
 def health_check():
     return 'OK', 200
+
+
+# Guidelines Management
+@app.route('/guidelines')
+@admin_required
+def guidelines():
+    """Admin page to view and edit club guidelines"""
+    member_guidelines = SiteSettings.get('member_guidelines', '')
+    booking_guidelines = SiteSettings.get('booking_guidelines', '')
+    return render_template('guidelines.html',
+                           member_guidelines=member_guidelines,
+                           booking_guidelines=booking_guidelines)
+
+
+@app.route('/guidelines/edit', methods=['POST'])
+@admin_required
+def edit_guidelines():
+    """Save updated guidelines"""
+    member_guidelines = request.form.get('member_guidelines', '')
+    booking_guidelines = request.form.get('booking_guidelines', '')
+
+    SiteSettings.set('member_guidelines', member_guidelines)
+    SiteSettings.set('booking_guidelines', booking_guidelines)
+
+    flash('Guidelines updated successfully!', 'success')
+    return redirect(url_for('guidelines'))
+
+
+@app.route('/api/guidelines')
+def get_guidelines():
+    """Public API to get guidelines for login/register pages"""
+    return jsonify({
+        'member_guidelines': SiteSettings.get('member_guidelines', ''),
+        'booking_guidelines': SiteSettings.get('booking_guidelines', '')
+    })
 
 
 # Dashboard
