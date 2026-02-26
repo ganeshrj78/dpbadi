@@ -1869,4 +1869,4 @@ def ratelimit_handler(e):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5050)  # Using 5050 as 5000 is often used by macOS AirPlay
