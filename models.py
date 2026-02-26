@@ -9,10 +9,10 @@ class Player(db.Model):
     __tablename__ = 'players'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    category = db.Column(db.String(20), nullable=False, default='regular')  # regular, adhoc, kid
+    name = db.Column(db.String(100), nullable=False, index=True)
+    category = db.Column(db.String(20), nullable=False, default='regular', index=True)  # regular, adhoc, kid
     phone = db.Column(db.String(20))
-    email = db.Column(db.String(100))
+    email = db.Column(db.String(100), index=True)
     password_hash = db.Column(db.String(255))
     zelle_preference = db.Column(db.String(10), default='email')  # 'email' or 'phone'
     date_of_birth = db.Column(db.Date, nullable=True)  # Optional date of birth
@@ -20,8 +20,8 @@ class Player(db.Model):
     profile_photo = db.Column(db.String(255))  # filename of uploaded photo
     managed_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)  # Parent player who can vote/pay for this player
     is_admin = db.Column(db.Boolean, default=False)  # Player admin flag
-    is_active = db.Column(db.Boolean, default=True)  # Active/Inactive status
-    is_approved = db.Column(db.Boolean, default=False)  # Registration approval status
+    is_active = db.Column(db.Boolean, default=True, index=True)  # Active/Inactive status
+    is_approved = db.Column(db.Boolean, default=False, index=True)  # Registration approval status
 
     # Audit fields
     created_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
@@ -106,10 +106,10 @@ class Session(db.Model):
     __tablename__ = 'sessions'
 
     id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.Date, nullable=False)
+    date = db.Column(db.Date, nullable=False, index=True)
     birdie_cost = db.Column(db.Float, nullable=False, default=0)
     notes = db.Column(db.Text)
-    is_archived = db.Column(db.Boolean, default=False)
+    is_archived = db.Column(db.Boolean, default=False, index=True)
     voting_frozen = db.Column(db.Boolean, default=False)  # If True, players cannot change their votes
 
     # Audit fields
@@ -302,7 +302,7 @@ class Court(db.Model):
     __tablename__ = 'courts'
 
     id = db.Column(db.Integer, primary_key=True)
-    session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=False)
+    session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=False, index=True)
     name = db.Column(db.String(50), default='Court')  # e.g., "Court 1", "Court A"
     start_time = db.Column(db.String(20), nullable=False)  # "6:30 AM"
     end_time = db.Column(db.String(20), nullable=False)    # "9:30 AM"
@@ -330,10 +330,10 @@ class Attendance(db.Model):
     __tablename__ = 'attendances'
 
     id = db.Column(db.Integer, primary_key=True)
-    player_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=False)
-    session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=False)
-    status = db.Column(db.String(20), nullable=False, default='NO')  # YES, NO, TENTATIVE, DROPOUT, FILLIN
-    category = db.Column(db.String(20), default='regular')  # regular, adhoc, kid - category for this session
+    player_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=False, index=True)
+    session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=False, index=True)
+    status = db.Column(db.String(20), nullable=False, default='NO', index=True)  # YES, NO, TENTATIVE, DROPOUT, FILLIN
+    category = db.Column(db.String(20), default='regular', index=True)  # regular, adhoc, kid - category for this session
 
     # Audit fields
     created_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
@@ -341,7 +341,10 @@ class Attendance(db.Model):
     updated_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    __table_args__ = (db.UniqueConstraint('player_id', 'session_id', name='unique_player_session'),)
+    __table_args__ = (
+        db.UniqueConstraint('player_id', 'session_id', name='unique_player_session'),
+        db.Index('idx_attendance_status_category', 'status', 'category'),
+    )
 
     def to_dict(self):
         return {
@@ -358,10 +361,10 @@ class Payment(db.Model):
     __tablename__ = 'payments'
 
     id = db.Column(db.Integer, primary_key=True)
-    player_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=False)
+    player_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=False, index=True)
     amount = db.Column(db.Float, nullable=False)
     method = db.Column(db.String(20), nullable=False)  # Zelle, Cash, Venmo
-    date = db.Column(db.DateTime, default=datetime.utcnow)
+    date = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     notes = db.Column(db.Text)
 
     # Audit fields
@@ -387,12 +390,12 @@ class DropoutRefund(db.Model):
     __tablename__ = 'dropout_refunds'
 
     id = db.Column(db.Integer, primary_key=True)
-    player_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=False)
-    session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=False)
+    player_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=False, index=True)
+    session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=False, index=True)
     refund_amount = db.Column(db.Float, nullable=False, default=0)
     suggested_amount = db.Column(db.Float, default=0)  # System-calculated suggestion
     instructions = db.Column(db.Text)  # Admin instructions/notes
-    status = db.Column(db.String(20), default='pending')  # pending, processed, cancelled
+    status = db.Column(db.String(20), default='pending', index=True)  # pending, processed, cancelled
     processed_date = db.Column(db.DateTime, nullable=True)
 
     # Audit fields
@@ -400,6 +403,10 @@ class DropoutRefund(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.Index('idx_refund_player_status', 'player_id', 'status'),
+    )
 
     player = db.relationship('Player', foreign_keys=[player_id], backref='dropout_refunds')
     session = db.relationship('Session', backref='dropout_refunds')
