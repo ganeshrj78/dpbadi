@@ -84,6 +84,21 @@
 </div>
 {% endif %}
 
+<!-- Floating Save/Discard Bar -->
+<div id="save-bar" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-white rounded-xl shadow-2xl border-2 border-wimbledon-purple px-6 py-3 flex items-center gap-4 z-50 hidden">
+    <span class="text-sm font-medium text-gray-700">
+        <span id="change-count">0</span> unsaved changes
+    </span>
+    <button onclick="saveAllChanges()" class="px-4 py-2 bg-wimbledon-green text-white rounded-lg text-sm font-bold hover:bg-green-700 transition-all flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        Save
+    </button>
+    <button onclick="discardAllChanges()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-300 transition-all flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        Discard
+    </button>
+</div>
+
 <!-- Active Sessions - Attendance Matrix -->
 <div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 overflow-hidden mb-8" x-data="{ selectedSessions: [], paymentFilter: 'all', searchQuery: '' }">
     <div class="px-6 py-4 border-b border-wimbledon-gold/20 bg-gradient-to-r from-wimbledon-cream to-white flex items-center justify-between">
@@ -241,8 +256,11 @@
                     {% for session in active_sessions %}
                     <td class="px-1 py-1 text-center">
                         {% set status = attendance_map.get(session.id, {}).get(player.id, '') %}
-                        <select onchange="updateAttendance({{ session.id }}, {{ player.id }}, this.value)"
-                            class="w-20 text-xs py-1 px-1 rounded border
+                        <select onchange="trackChange(this, {{ session.id }}, {{ player.id }})"
+                            data-session-id="{{ session.id }}"
+                            data-player-id="{{ player.id }}"
+                            data-original="{{ status }}"
+                            class="attendance-select w-20 text-xs py-1 px-1 rounded border
                             {% if status == 'YES' %}bg-green-100 border-green-500 text-green-700
                             {% elif status == 'NO' %}bg-red-100 border-red-500 text-red-700
                             {% elif status == 'TENTATIVE' %}bg-yellow-100 border-yellow-500 text-yellow-700
@@ -343,8 +361,11 @@
                     {% for session in active_sessions %}
                     <td class="px-1 py-1 text-center">
                         {% set status = attendance_map.get(session.id, {}).get(player.id, '') %}
-                        <select onchange="updateAttendance({{ session.id }}, {{ player.id }}, this.value)"
-                            class="w-20 text-xs py-1 px-1 rounded border
+                        <select onchange="trackChange(this, {{ session.id }}, {{ player.id }})"
+                            data-session-id="{{ session.id }}"
+                            data-player-id="{{ player.id }}"
+                            data-original="{{ status }}"
+                            class="attendance-select w-20 text-xs py-1 px-1 rounded border
                             {% if status == 'YES' %}bg-green-100 border-green-500 text-green-700
                             {% elif status == 'NO' %}bg-red-100 border-red-500 text-red-700
                             {% elif status == 'TENTATIVE' %}bg-yellow-100 border-yellow-500 text-yellow-700
@@ -445,8 +466,11 @@
                     {% for session in active_sessions %}
                     <td class="px-1 py-1 text-center">
                         {% set status = attendance_map.get(session.id, {}).get(player.id, '') %}
-                        <select onchange="updateAttendance({{ session.id }}, {{ player.id }}, this.value)"
-                            class="w-20 text-xs py-1 px-1 rounded border
+                        <select onchange="trackChange(this, {{ session.id }}, {{ player.id }})"
+                            data-session-id="{{ session.id }}"
+                            data-player-id="{{ player.id }}"
+                            data-original="{{ status }}"
+                            class="attendance-select w-20 text-xs py-1 px-1 rounded border
                             {% if status == 'YES' %}bg-green-100 border-green-500 text-green-700
                             {% elif status == 'NO' %}bg-red-100 border-red-500 text-red-700
                             {% elif status == 'TENTATIVE' %}bg-yellow-100 border-yellow-500 text-yellow-700
@@ -527,82 +551,93 @@
 
 <!-- JavaScript for attendance management -->
 <script>
-// Request queue to prevent concurrent database writes (SQLite limitation)
-const attendanceQueue = {
-    requests: [],
-    processing: false,
+// Track pending changes: Map of "sessionId-playerId" -> {sessionId, playerId, status, originalStatus}
+const pendingChanges = new Map();
 
-    add(request) {
-        this.requests.push(request);
-        this.process();
-    },
+// Track a change when dropdown is modified
+function trackChange(selectElement, sessionId, playerId) {
+    const newStatus = selectElement.value || 'CLEAR';
+    const originalStatus = selectElement.dataset.original || '';
+    const key = `${sessionId}-${playerId}`;
 
-    async process() {
-        if (this.processing || this.requests.length === 0) return;
-
-        this.processing = true;
-        const { sessionId, playerId, status, resolve, reject } = this.requests.shift();
-
-        try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            const response = await fetch('/api/attendance', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({
-                    session_id: sessionId,
-                    player_id: playerId,
-                    status: status || 'CLEAR'
-                })
-            });
-
-            const data = await response.json();
-            resolve(data);
-        } catch (error) {
-            reject(error);
-        } finally {
-            this.processing = false;
-            // Small delay between requests to prevent database contention
-            setTimeout(() => this.process(), 50);
-        }
-    }
-};
-
-// Track pending updates for batch reload
-let pendingUpdates = 0;
-let reloadTimer = null;
-
-// Update single attendance via dropdown (queued to prevent concurrency issues)
-function updateAttendance(sessionId, playerId, status) {
-    pendingUpdates++;
-
-    // Clear any pending reload timer
-    if (reloadTimer) {
-        clearTimeout(reloadTimer);
-        reloadTimer = null;
+    // If changed back to original, remove from pending
+    if (newStatus === originalStatus || (newStatus === 'CLEAR' && originalStatus === '')) {
+        pendingChanges.delete(key);
+        selectElement.classList.remove('ring-2', 'ring-wimbledon-purple');
+    } else {
+        pendingChanges.set(key, {
+            session_id: sessionId,
+            player_id: playerId,
+            status: newStatus
+        });
+        // Visual indicator that this dropdown has unsaved changes
+        selectElement.classList.add('ring-2', 'ring-wimbledon-purple');
     }
 
-    new Promise((resolve, reject) => {
-        attendanceQueue.add({ sessionId, playerId, status, resolve, reject });
-    })
-    .then(data => {
-        pendingUpdates--;
+    updateSaveBar();
+}
+
+// Update the floating save bar visibility and count
+function updateSaveBar() {
+    const saveBar = document.getElementById('save-bar');
+    const countSpan = document.getElementById('change-count');
+
+    if (pendingChanges.size > 0) {
+        saveBar.classList.remove('hidden');
+        countSpan.textContent = pendingChanges.size;
+    } else {
+        saveBar.classList.add('hidden');
+    }
+}
+
+// Save all pending changes in a single batch request
+async function saveAllChanges() {
+    if (pendingChanges.size === 0) return;
+
+    const updates = Array.from(pendingChanges.values());
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    try {
+        const response = await fetch('/api/attendance/batch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ updates: updates })
+        });
+
+        const data = await response.json();
+
         if (data.success) {
-            // Wait for all pending updates before reloading
-            if (pendingUpdates === 0) {
-                reloadTimer = setTimeout(() => location.reload(), 300);
-            }
+            location.reload();
         } else {
-            alert(data.error || 'Failed to update attendance');
+            const errorMsg = data.errors && data.errors.length > 0
+                ? data.errors.join('\n')
+                : 'Some updates failed';
+            alert(errorMsg);
+            // Still reload to show partial updates
+            if (data.updated > 0) {
+                location.reload();
+            }
         }
-    })
-    .catch(error => {
-        pendingUpdates--;
-        console.error('Error:', error);
-        alert('Failed to update attendance');
+    } catch (error) {
+        console.error('Error saving changes:', error);
+        alert('Failed to save changes. Please try again.');
+    }
+}
+
+// Discard all pending changes
+function discardAllChanges() {
+    // Reset all modified dropdowns to their original values
+    document.querySelectorAll('.attendance-select').forEach(select => {
+        const originalStatus = select.dataset.original || '';
+        select.value = originalStatus;
+        select.classList.remove('ring-2', 'ring-wimbledon-purple');
     });
+
+    pendingChanges.clear();
+    updateSaveBar();
 }
 
 </script>

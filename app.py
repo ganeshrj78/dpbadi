@@ -1419,6 +1419,104 @@ def delete_dropout_refund(id):
     return redirect(url_for('session_refunds', id=session_id))
 
 
+# Attendance API - Batch update (for concurrent changes)
+@app.route('/api/attendance/batch', methods=['POST'])
+@csrf.exempt  # API endpoint uses JSON
+@admin_required
+def batch_update_attendance():
+    """Batch update multiple attendance records in a single transaction"""
+    data = request.get_json()
+    updates = data.get('updates', [])
+
+    if not updates:
+        return jsonify({'success': False, 'error': 'No updates provided'})
+
+    results = []
+    errors = []
+
+    for update in updates:
+        player_id = update.get('player_id')
+        session_id = update.get('session_id')
+        status = update.get('status')
+
+        if status not in ['YES', 'NO', 'TENTATIVE', 'DROPOUT', 'FILLIN', 'CLEAR']:
+            errors.append(f'Invalid status for session {session_id}, player {player_id}')
+            continue
+
+        sess = Session.query.get(session_id)
+        if not sess:
+            errors.append(f'Session {session_id} not found')
+            continue
+
+        attendance = Attendance.query.filter_by(player_id=player_id, session_id=session_id).first()
+        current_status = attendance.status if attendance else None
+
+        # When session is frozen, only allow specific transitions
+        if sess.voting_frozen:
+            allowed_transitions = {
+                'YES': ['DROPOUT'],
+                'NO': ['FILLIN'],
+                'TENTATIVE': ['DROPOUT', 'FILLIN'],
+                'DROPOUT': ['YES'],
+                'FILLIN': ['NO'],
+                None: ['FILLIN'],
+            }
+            allowed = allowed_transitions.get(current_status, [])
+            if status not in allowed and status != current_status:
+                errors.append(f'Session {session_id} is frozen. Only Dropout and Fill-in changes allowed.')
+                continue
+
+        if status == 'CLEAR':
+            if attendance:
+                db.session.delete(attendance)
+        elif attendance:
+            old_status = attendance.status
+            attendance.status = status
+
+            # Auto-create refund when dropping out of a frozen session
+            if sess.voting_frozen and status == 'DROPOUT' and old_status == 'YES':
+                existing_refund = DropoutRefund.query.filter_by(
+                    session_id=session_id, player_id=player_id
+                ).first()
+                if not existing_refund:
+                    suggested_amount = sess.calculate_suggested_refund()
+                    refund = DropoutRefund(
+                        player_id=player_id,
+                        session_id=session_id,
+                        refund_amount=suggested_amount,
+                        suggested_amount=suggested_amount,
+                        status='pending'
+                    )
+                    db.session.add(refund)
+
+            # Auto-delete refund when reverting from dropout
+            if sess.voting_frozen and old_status == 'DROPOUT' and status == 'YES':
+                existing_refund = DropoutRefund.query.filter_by(
+                    session_id=session_id, player_id=player_id, status='pending'
+                ).first()
+                if existing_refund:
+                    db.session.delete(existing_refund)
+        else:
+            player = Player.query.get(player_id)
+            attendance = Attendance(
+                session_id=session_id,
+                player_id=player_id,
+                status=status,
+                category=player.category if player else 'regular'
+            )
+            db.session.add(attendance)
+
+        results.append({'session_id': session_id, 'player_id': player_id, 'status': status})
+
+    db.session.commit()
+
+    return jsonify({
+        'success': len(errors) == 0,
+        'updated': len(results),
+        'errors': errors
+    })
+
+
 # Attendance API
 @app.route('/api/attendance', methods=['POST'])
 @csrf.exempt  # API endpoint uses JSON
