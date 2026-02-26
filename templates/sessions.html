@@ -527,31 +527,79 @@
 
 <!-- JavaScript for attendance management -->
 <script>
-// Update single attendance via dropdown
-function updateAttendance(sessionId, playerId, status) {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+// Request queue to prevent concurrent database writes (SQLite limitation)
+const attendanceQueue = {
+    requests: [],
+    processing: false,
 
-    fetch('/api/attendance', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
-        },
-        body: JSON.stringify({
-            session_id: sessionId,
-            player_id: playerId,
-            status: status || 'CLEAR'
-        })
+    add(request) {
+        this.requests.push(request);
+        this.process();
+    },
+
+    async process() {
+        if (this.processing || this.requests.length === 0) return;
+
+        this.processing = true;
+        const { sessionId, playerId, status, resolve, reject } = this.requests.shift();
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const response = await fetch('/api/attendance', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    player_id: playerId,
+                    status: status || 'CLEAR'
+                })
+            });
+
+            const data = await response.json();
+            resolve(data);
+        } catch (error) {
+            reject(error);
+        } finally {
+            this.processing = false;
+            // Small delay between requests to prevent database contention
+            setTimeout(() => this.process(), 50);
+        }
+    }
+};
+
+// Track pending updates for batch reload
+let pendingUpdates = 0;
+let reloadTimer = null;
+
+// Update single attendance via dropdown (queued to prevent concurrency issues)
+function updateAttendance(sessionId, playerId, status) {
+    pendingUpdates++;
+
+    // Clear any pending reload timer
+    if (reloadTimer) {
+        clearTimeout(reloadTimer);
+        reloadTimer = null;
+    }
+
+    new Promise((resolve, reject) => {
+        attendanceQueue.add({ sessionId, playerId, status, resolve, reject });
     })
-    .then(response => response.json())
     .then(data => {
+        pendingUpdates--;
         if (data.success) {
-            location.reload();
+            // Wait for all pending updates before reloading
+            if (pendingUpdates === 0) {
+                reloadTimer = setTimeout(() => location.reload(), 300);
+            }
         } else {
             alert(data.error || 'Failed to update attendance');
         }
     })
     .catch(error => {
+        pendingUpdates--;
         console.error('Error:', error);
         alert('Failed to update attendance');
     });
