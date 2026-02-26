@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, make_response
 from functools import wraps
 from datetime import datetime, date
 from werkzeug.utils import secure_filename
@@ -12,9 +12,15 @@ from sqlalchemy import func
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_caching import Cache
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Caching Configuration
+app.config['CACHE_TYPE'] = 'SimpleCache'  # In-memory cache (use 'RedisCache' for production with Redis)
+app.config['CACHE_DEFAULT_TIMEOUT'] = 300  # 5 minutes default
+cache = Cache(app)
 
 # CSRF Protection
 csrf = CSRFProtect(app)
@@ -26,6 +32,15 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"],
     storage_uri="memory://"
 )
+
+
+# Static file cache headers (1 week for assets)
+@app.after_request
+def add_cache_headers(response):
+    # Cache static files (CSS, JS, images) for 1 week
+    if request.path.startswith('/static/'):
+        response.headers['Cache-Control'] = 'public, max-age=604800'  # 1 week
+    return response
 
 # Logging Configuration
 if not os.path.exists('logs'):
@@ -103,6 +118,52 @@ def admin_required(f):
             return redirect(url_for('player_profile'))
         return f(*args, **kwargs)
     return decorated_function
+
+
+# Cached helper for monthly summary (expensive calculation)
+@cache.memoize(timeout=60)  # Cache for 60 seconds
+def get_cached_monthly_summary():
+    """Calculate monthly summary with caching"""
+    all_sessions = Session.query.order_by(Session.date.desc()).all()
+    monthly_summary = {}
+    for sess in all_sessions:
+        key = sess.date.strftime('%Y-%m')
+        label = sess.date.strftime('%B %Y')
+        if key not in monthly_summary:
+            monthly_summary[key] = {
+                'label': label,
+                'sessions': [],
+                'total_sessions': 0,
+                'archived_sessions': 0,
+                'birdie_charges': 0,
+                'regular_charges': 0,
+                'adhoc_charges': 0,
+                'kid_charges': 0,
+                'total_refunds': 0,
+                'total_collection': 0
+            }
+        monthly_summary[key]['sessions'].append(sess)
+        monthly_summary[key]['total_sessions'] += 1
+        if sess.is_archived:
+            monthly_summary[key]['archived_sessions'] += 1
+        monthly_summary[key]['birdie_charges'] += sess.get_birdie_cost_total()
+        monthly_summary[key]['regular_charges'] += sess.get_regular_player_charges()
+        monthly_summary[key]['adhoc_charges'] += sess.get_adhoc_player_charges()
+        monthly_summary[key]['kid_charges'] += sess.get_kid_player_charges()
+        monthly_summary[key]['total_refunds'] += sess.get_total_refunds()
+        monthly_summary[key]['total_collection'] += sess.get_total_collection()
+
+    for key in monthly_summary:
+        monthly_summary[key]['is_fully_archived'] = (
+            monthly_summary[key]['total_sessions'] == monthly_summary[key]['archived_sessions']
+        )
+
+    return sorted(monthly_summary.items(), key=lambda x: x[0], reverse=True)
+
+
+def clear_session_cache():
+    """Clear session-related cache when data changes"""
+    cache.delete_memoized(get_cached_monthly_summary)
 
 
 # Master admin only decorator (for sensitive operations like promoting admins)
@@ -859,9 +920,6 @@ def sessions():
     # Get active sessions
     active_sessions = Session.query.filter_by(is_archived=False).order_by(Session.date.asc()).all()
 
-    # Get all sessions for monthly summary
-    all_sessions = Session.query.order_by(Session.date.desc()).all()
-
     # Batch load all attendance records for active sessions to avoid N+1
     active_session_ids = [s.id for s in active_sessions]
     all_attendances = Attendance.query.filter(Attendance.session_id.in_(active_session_ids)).all() if active_session_ids else []
@@ -874,46 +932,12 @@ def sessions():
         if att.session_id in attendance_map:
             attendance_map[att.session_id][att.player_id] = att.status
 
-    # Group all sessions by year-month for monthly summary
-    monthly_summary = {}
-    for sess in all_sessions:
-        key = sess.date.strftime('%Y-%m')
-        label = sess.date.strftime('%B %Y')
-        if key not in monthly_summary:
-            monthly_summary[key] = {
-                'label': label,
-                'sessions': [],
-                'total_sessions': 0,
-                'archived_sessions': 0,
-                'birdie_charges': 0,
-                'regular_charges': 0,
-                'adhoc_charges': 0,
-                'kid_charges': 0,
-                'total_refunds': 0,
-                'total_collection': 0
-            }
-        monthly_summary[key]['sessions'].append(sess)
-        monthly_summary[key]['total_sessions'] += 1
-        if sess.is_archived:
-            monthly_summary[key]['archived_sessions'] += 1
-        monthly_summary[key]['birdie_charges'] += sess.get_birdie_cost_total()
-        monthly_summary[key]['regular_charges'] += sess.get_regular_player_charges()
-        monthly_summary[key]['adhoc_charges'] += sess.get_adhoc_player_charges()
-        monthly_summary[key]['kid_charges'] += sess.get_kid_player_charges()
-        monthly_summary[key]['total_refunds'] += sess.get_total_refunds()
-        monthly_summary[key]['total_collection'] += sess.get_total_collection()
-
-    # Calculate if month is fully archived
-    for key in monthly_summary:
-        monthly_summary[key]['is_fully_archived'] = (
-            monthly_summary[key]['total_sessions'] == monthly_summary[key]['archived_sessions']
-        )
-
-    # Sort by key (year-month) descending
-    monthly_sorted = sorted(monthly_summary.items(), key=lambda x: x[0], reverse=True)
+    # Get cached monthly summary (expensive calculation)
+    monthly_sorted = get_cached_monthly_summary()
 
     # Archived sessions grouped by year and month
-    archived_sessions = [s for s in all_sessions if s.is_archived]
+    all_sessions = Session.query.filter_by(is_archived=True).order_by(Session.date.desc()).all()
+    archived_sessions = all_sessions
 
     # Group archived by year-month
     archived_grouped = {}
@@ -1560,6 +1584,7 @@ def batch_update_attendance():
         results.append({'session_id': session_id, 'player_id': player_id, 'status': status})
 
     db.session.commit()
+    clear_session_cache()  # Invalidate cached data
 
     return jsonify({
         'success': len(errors) == 0,
@@ -1640,6 +1665,7 @@ def update_attendance():
         db.session.add(attendance)
 
     db.session.commit()
+    clear_session_cache()  # Invalidate cached data
 
     # Return updated session costs
     return jsonify({
