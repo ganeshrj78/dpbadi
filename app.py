@@ -8,7 +8,6 @@ import logging
 from logging.handlers import RotatingFileHandler
 from config import Config
 from models import db, Player, Session, Court, Attendance, Payment, BirdieBank, DropoutRefund
-from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy import func
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
@@ -800,15 +799,23 @@ def reject_player(id):
 @app.route('/sessions')
 @admin_required
 def sessions():
-    # Eager load sessions with their attendances and courts to avoid N+1 queries
-    active_sessions = Session.query.filter_by(is_archived=False)\
-        .options(selectinload(Session.attendances), selectinload(Session.courts), selectinload(Session.dropout_refunds))\
-        .order_by(Session.date.asc()).all()
+    # Get active sessions
+    active_sessions = Session.query.filter_by(is_archived=False).order_by(Session.date.asc()).all()
 
-    # All sessions with eager loading for monthly summary
-    all_sessions = Session.query\
-        .options(selectinload(Session.attendances), selectinload(Session.courts), selectinload(Session.dropout_refunds))\
-        .order_by(Session.date.desc()).all()
+    # Get all sessions for monthly summary
+    all_sessions = Session.query.order_by(Session.date.desc()).all()
+
+    # Batch load all attendance records for active sessions to avoid N+1
+    active_session_ids = [s.id for s in active_sessions]
+    all_attendances = Attendance.query.filter(Attendance.session_id.in_(active_session_ids)).all() if active_session_ids else []
+
+    # Build attendance map: {session_id: {player_id: status}}
+    attendance_map = {}
+    for sess in active_sessions:
+        attendance_map[sess.id] = {}
+    for att in all_attendances:
+        if att.session_id in attendance_map:
+            attendance_map[att.session_id][att.player_id] = att.status
 
     # Group all sessions by year-month for monthly summary
     monthly_summary = {}
@@ -863,10 +870,8 @@ def sessions():
     # Sort by key (year-month) descending
     archived_sorted = sorted(archived_grouped.items(), key=lambda x: x[0], reverse=True)
 
-    # Get all active players with eager loading
-    all_players = Player.query.filter_by(is_active=True, is_approved=True)\
-        .options(selectinload(Player.attendances), selectinload(Player.payments))\
-        .order_by(Player.name).all()
+    # Get all active players
+    all_players = Player.query.filter_by(is_active=True, is_approved=True).order_by(Player.name).all()
 
     regular_players = [p for p in all_players if p.category == 'regular']
     adhoc_players = [p for p in all_players if p.category == 'adhoc']
@@ -894,13 +899,6 @@ def sessions():
             'pending_refunds': refund_data['pending'],
             'total_refunded': refund_data['refunded']
         }
-
-    # Build attendance map: {session_id: {player_id: status}}
-    attendance_map = {}
-    for sess in active_sessions:
-        attendance_map[sess.id] = {}
-        for att in sess.attendances:  # Already loaded via selectinload
-            attendance_map[sess.id][att.player_id] = att.status
 
     return render_template('sessions.html',
                           active_sessions=active_sessions,
