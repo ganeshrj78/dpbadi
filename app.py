@@ -206,7 +206,7 @@ def register():
         existing_player = Player.query.filter(db.func.lower(Player.email) == email).first()
         if existing_player:
             security_logger.warning(f'REGISTRATION_DUPLICATE_EMAIL - Email: {email}, IP: {client_ip}')
-            flash('An account with this email already exists', 'error')
+            flash('An account with this email already exists. Please contact an admin to reset your password.', 'error')
             return render_template('register.html')
 
         # Create new player (pending approval)
