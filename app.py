@@ -1109,6 +1109,27 @@ def bulk_unarchive_sessions():
     return redirect(url_for('sessions'))
 
 
+@app.route('/sessions/bulk-delete', methods=['POST'])
+@admin_required
+def bulk_delete_sessions():
+    session_ids = request.form.getlist('session_ids')
+    if not session_ids:
+        flash('No sessions selected', 'error')
+        return redirect(url_for('sessions'))
+
+    count = 0
+    for session_id in session_ids:
+        sess = Session.query.get(int(session_id))
+        # Only delete archived sessions
+        if sess and sess.is_archived:
+            db.session.delete(sess)
+            count += 1
+
+    db.session.commit()
+    flash(f'{count} session(s) permanently deleted!', 'success')
+    return redirect(url_for('sessions'))
+
+
 @app.route('/sessions/bulk-freeze-voting', methods=['POST'])
 @admin_required
 def bulk_freeze_voting():
