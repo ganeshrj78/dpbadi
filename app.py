@@ -1122,6 +1122,11 @@ def bulk_delete_sessions():
         sess = Session.query.get(int(session_id))
         # Only delete archived sessions
         if sess and sess.is_archived:
+            # Delete related dropout refunds first
+            DropoutRefund.query.filter_by(session_id=sess.id).delete()
+            # Delete related birdie bank transactions
+            BirdieBank.query.filter_by(session_id=sess.id).delete()
+            # Now delete the session (attendances and courts cascade automatically)
             db.session.delete(sess)
             count += 1
 
