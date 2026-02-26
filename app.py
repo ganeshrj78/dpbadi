@@ -1029,6 +1029,12 @@ def edit_session(id):
 @admin_required
 def delete_session(id):
     sess = Session.query.get_or_404(id)
+
+    # Only archived sessions can be deleted
+    if not sess.is_archived:
+        flash('Only archived sessions can be deleted. Please archive the session first.', 'error')
+        return redirect(url_for('session_detail', id=id))
+
     db.session.delete(sess)
     db.session.commit()
     flash('Session deleted successfully!', 'success')
