@@ -221,8 +221,9 @@
                     </td>
                 </tr>
                 {% for player in regular_players %}
+                {% set stats = player_stats[player.id] %}
                 <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all"
-                    x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ player.get_balance() }} <= 0) || (paymentFilter === 'unpaid' && {{ player.get_balance() }} > 0))">
+                    x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ stats.balance }} <= 0) || (paymentFilter === 'unpaid' && {{ stats.balance }} > 0))">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
                         <div class="flex items-center space-x-2">
                             <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
@@ -290,25 +291,22 @@
                         </span>
                     </td>
                     <td class="px-2 py-2 text-right whitespace-nowrap">
-                        {% set balance = player.get_balance() %}
-                        <span class="text-sm font-bold {% if balance > 0 %}text-red-600{% elif balance < 0 %}text-green-600{% else %}text-gray-500{% endif %}">
-                            ${{ "%.2f"|format(balance) }}
+                        <span class="text-sm font-bold {% if stats.balance > 0 %}text-red-600{% elif stats.balance < 0 %}text-green-600{% else %}text-gray-500{% endif %}">
+                            ${{ "%.2f"|format(stats.balance) }}
                         </span>
                     </td>
                     <td class="px-2 py-2 text-center whitespace-nowrap">
-                        {% set pending_refunds = player.get_pending_refunds_count() %}
-                        {% if balance > 0 %}
+                        {% if stats.balance > 0 %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
-                        {% elif pending_refunds > 0 %}
+                        {% elif stats.pending_refunds > 0 %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">Refund Pending</span>
                         {% else %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
                         {% endif %}
                     </td>
                     <td class="px-2 py-2 text-right whitespace-nowrap">
-                        {% set refunded = player.get_total_refunded() %}
-                        {% if refunded > 0 %}
-                        <span class="text-sm font-medium text-orange-600">${{ "%.2f"|format(refunded) }}</span>
+                        {% if stats.total_refunded > 0 %}
+                        <span class="text-sm font-medium text-orange-600">${{ "%.2f"|format(stats.total_refunded) }}</span>
                         {% else %}
                         <span class="text-gray-400 text-xs">-</span>
                         {% endif %}
@@ -325,8 +323,9 @@
                     </td>
                 </tr>
                 {% for player in adhoc_players %}
+                {% set stats = player_stats[player.id] %}
                 <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all"
-                    x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ player.get_balance() }} <= 0) || (paymentFilter === 'unpaid' && {{ player.get_balance() }} > 0))">
+                    x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ stats.balance }} <= 0) || (paymentFilter === 'unpaid' && {{ stats.balance }} > 0))">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
                         <div class="flex items-center space-x-2">
                             <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
@@ -394,25 +393,22 @@
                         </span>
                     </td>
                     <td class="px-2 py-2 text-right whitespace-nowrap">
-                        {% set balance = player.get_balance() %}
-                        <span class="text-sm font-bold {% if balance > 0 %}text-red-600{% elif balance < 0 %}text-green-600{% else %}text-gray-500{% endif %}">
-                            ${{ "%.2f"|format(balance) }}
+                        <span class="text-sm font-bold {% if stats.balance > 0 %}text-red-600{% elif stats.balance < 0 %}text-green-600{% else %}text-gray-500{% endif %}">
+                            ${{ "%.2f"|format(stats.balance) }}
                         </span>
                     </td>
                     <td class="px-2 py-2 text-center whitespace-nowrap">
-                        {% set pending_refunds = player.get_pending_refunds_count() %}
-                        {% if balance > 0 %}
+                        {% if stats.balance > 0 %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
-                        {% elif pending_refunds > 0 %}
+                        {% elif stats.pending_refunds > 0 %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">Refund Pending</span>
                         {% else %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
                         {% endif %}
                     </td>
                     <td class="px-2 py-2 text-right whitespace-nowrap">
-                        {% set refunded = player.get_total_refunded() %}
-                        {% if refunded > 0 %}
-                        <span class="text-sm font-medium text-orange-600">${{ "%.2f"|format(refunded) }}</span>
+                        {% if stats.total_refunded > 0 %}
+                        <span class="text-sm font-medium text-orange-600">${{ "%.2f"|format(stats.total_refunded) }}</span>
                         {% else %}
                         <span class="text-gray-400 text-xs">-</span>
                         {% endif %}
@@ -429,8 +425,9 @@
                     </td>
                 </tr>
                 {% for player in kid_players %}
+                {% set stats = player_stats[player.id] %}
                 <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all"
-                    x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ player.get_balance() }} <= 0) || (paymentFilter === 'unpaid' && {{ player.get_balance() }} > 0))">
+                    x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ stats.balance }} <= 0) || (paymentFilter === 'unpaid' && {{ stats.balance }} > 0))">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
                         <div class="flex items-center space-x-2">
                             <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
@@ -490,25 +487,22 @@
                         <span class="text-sm font-medium text-gray-400">$0.00</span>
                     </td>
                     <td class="px-2 py-2 text-right whitespace-nowrap">
-                        {% set balance = player.get_balance() %}
-                        <span class="text-sm font-bold {% if balance > 0 %}text-red-600{% elif balance < 0 %}text-green-600{% else %}text-gray-500{% endif %}">
-                            ${{ "%.2f"|format(balance) }}
+                        <span class="text-sm font-bold {% if stats.balance > 0 %}text-red-600{% elif stats.balance < 0 %}text-green-600{% else %}text-gray-500{% endif %}">
+                            ${{ "%.2f"|format(stats.balance) }}
                         </span>
                     </td>
                     <td class="px-2 py-2 text-center whitespace-nowrap">
-                        {% set pending_refunds = player.get_pending_refunds_count() %}
-                        {% if balance > 0 %}
+                        {% if stats.balance > 0 %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
-                        {% elif pending_refunds > 0 %}
+                        {% elif stats.pending_refunds > 0 %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">Refund Pending</span>
                         {% else %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
                         {% endif %}
                     </td>
                     <td class="px-2 py-2 text-right whitespace-nowrap">
-                        {% set refunded = player.get_total_refunded() %}
-                        {% if refunded > 0 %}
-                        <span class="text-sm font-medium text-orange-600">${{ "%.2f"|format(refunded) }}</span>
+                        {% if stats.total_refunded > 0 %}
+                        <span class="text-sm font-medium text-orange-600">${{ "%.2f"|format(stats.total_refunded) }}</span>
                         {% else %}
                         <span class="text-gray-400 text-xs">-</span>
                         {% endif %}

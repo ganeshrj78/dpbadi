@@ -8,6 +8,8 @@ import logging
 from logging.handlers import RotatingFileHandler
 from config import Config
 from models import db, Player, Session, Court, Attendance, Payment, BirdieBank, DropoutRefund
+from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy import func
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -798,11 +800,15 @@ def reject_player(id):
 @app.route('/sessions')
 @admin_required
 def sessions():
-    # Active sessions (not archived) - sorted by date ascending (earliest first)
-    active_sessions = Session.query.filter_by(is_archived=False).order_by(Session.date.asc()).all()
+    # Eager load sessions with their attendances and courts to avoid N+1 queries
+    active_sessions = Session.query.filter_by(is_archived=False)\
+        .options(selectinload(Session.attendances), selectinload(Session.courts), selectinload(Session.dropout_refunds))\
+        .order_by(Session.date.asc()).all()
 
-    # All sessions grouped by year and month for summary
-    all_sessions = Session.query.order_by(Session.date.desc()).all()
+    # All sessions with eager loading for monthly summary
+    all_sessions = Session.query\
+        .options(selectinload(Session.attendances), selectinload(Session.courts), selectinload(Session.dropout_refunds))\
+        .order_by(Session.date.desc()).all()
 
     # Group all sessions by year-month for monthly summary
     monthly_summary = {}
@@ -843,7 +849,7 @@ def sessions():
     monthly_sorted = sorted(monthly_summary.items(), key=lambda x: x[0], reverse=True)
 
     # Archived sessions grouped by year and month
-    archived_sessions = Session.query.filter_by(is_archived=True).order_by(Session.date.desc()).all()
+    archived_sessions = [s for s in all_sessions if s.is_archived]
 
     # Group archived by year-month
     archived_grouped = {}
@@ -857,16 +863,43 @@ def sessions():
     # Sort by key (year-month) descending
     archived_sorted = sorted(archived_grouped.items(), key=lambda x: x[0], reverse=True)
 
-    # Get all active players grouped by category for the attendance matrix
-    regular_players = Player.query.filter_by(is_active=True, category='regular').order_by(Player.name).all()
-    adhoc_players = Player.query.filter_by(is_active=True, category='adhoc').order_by(Player.name).all()
-    kid_players = Player.query.filter_by(is_active=True, category='kid').order_by(Player.name).all()
+    # Get all active players with eager loading
+    all_players = Player.query.filter_by(is_active=True, is_approved=True)\
+        .options(selectinload(Player.attendances), selectinload(Player.payments))\
+        .order_by(Player.name).all()
+
+    regular_players = [p for p in all_players if p.category == 'regular']
+    adhoc_players = [p for p in all_players if p.category == 'adhoc']
+    kid_players = [p for p in all_players if p.category == 'kid']
+
+    # Pre-compute player stats to avoid repeated queries in template
+    # Get all refund data in one query
+    refund_stats = db.session.query(
+        DropoutRefund.player_id,
+        func.count(DropoutRefund.id).filter(DropoutRefund.status == 'pending').label('pending_count'),
+        func.sum(DropoutRefund.refund_amount).filter(DropoutRefund.status == 'processed').label('total_refunded')
+    ).group_by(DropoutRefund.player_id).all()
+
+    refund_map = {r.player_id: {'pending': r.pending_count or 0, 'refunded': r.total_refunded or 0} for r in refund_stats}
+
+    # Pre-compute player data
+    player_stats = {}
+    for player in all_players:
+        balance = player.get_balance()
+        total_payments = player.get_total_payments()
+        refund_data = refund_map.get(player.id, {'pending': 0, 'refunded': 0})
+        player_stats[player.id] = {
+            'balance': balance,
+            'total_payments': total_payments,
+            'pending_refunds': refund_data['pending'],
+            'total_refunded': refund_data['refunded']
+        }
 
     # Build attendance map: {session_id: {player_id: status}}
     attendance_map = {}
     for sess in active_sessions:
         attendance_map[sess.id] = {}
-        for att in sess.attendances.all():
+        for att in sess.attendances:  # Already loaded via selectinload
             attendance_map[sess.id][att.player_id] = att.status
 
     return render_template('sessions.html',
@@ -876,7 +909,8 @@ def sessions():
                           regular_players=regular_players,
                           adhoc_players=adhoc_players,
                           kid_players=kid_players,
-                          attendance_map=attendance_map)
+                          attendance_map=attendance_map,
+                          player_stats=player_stats)
 
 
 @app.route('/sessions/add', methods=['GET', 'POST'])
