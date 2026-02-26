@@ -1128,6 +1128,7 @@ def toggle_archive(id):
     sess = Session.query.get_or_404(id)
     sess.is_archived = not sess.is_archived
     db.session.commit()
+    clear_session_cache()  # Invalidate cached monthly summary
     status = 'archived' if sess.is_archived else 'unarchived'
     flash(f'Session {status} successfully!', 'success')
     return redirect(url_for('session_detail', id=id))
@@ -1160,6 +1161,7 @@ def bulk_archive_sessions():
             count += 1
 
     db.session.commit()
+    clear_session_cache()  # Invalidate cached monthly summary
     flash(f'{count} session(s) archived successfully!', 'success')
     return redirect(url_for('sessions'))
 
@@ -1180,6 +1182,7 @@ def bulk_unarchive_sessions():
             count += 1
 
     db.session.commit()
+    clear_session_cache()  # Invalidate cached monthly summary
     flash(f'{count} session(s) unarchived successfully!', 'success')
     return redirect(url_for('sessions'))
 
@@ -1206,6 +1209,7 @@ def bulk_delete_sessions():
             count += 1
 
     db.session.commit()
+    clear_session_cache()  # Invalidate cached monthly summary
     flash(f'{count} session(s) permanently deleted!', 'success')
     return redirect(url_for('sessions'))
 
