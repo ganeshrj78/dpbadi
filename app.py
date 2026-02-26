@@ -229,6 +229,12 @@ def register():
     return render_template('register.html')
 
 
+# Health check endpoint for uptime monitoring (keeps Render from sleeping)
+@app.route('/health')
+def health_check():
+    return 'OK', 200
+
+
 # Dashboard
 @app.route('/')
 @login_required
