@@ -13,6 +13,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_caching import Cache
+from flask_migrate import Migrate
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -91,6 +92,7 @@ def save_profile_photo(file):
     return None
 
 db.init_app(app)
+migrate = Migrate(app, db)
 
 # Create tables
 with app.app_context():
