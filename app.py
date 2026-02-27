@@ -364,26 +364,6 @@ def dashboard():
         Session.date >= date.today()
     ).count()
 
-    # Calculate totals from active (non-archived) sessions only
-    active_sessions_all = Session.query.filter_by(is_archived=False).all()
-    active_session_ids = {s.id for s in active_sessions_all}
-
-    # Outstanding: sum of charges from active sessions minus all payments
-    total_charges = 0
-    for sess in active_sessions_all:
-        for att in sess.attendances:
-            if att.status in ['YES', 'DROPOUT', 'FILLIN'] and att.player and att.player.is_active:
-                if att.category == 'kid':
-                    total_charges += sess.get_cost_per_kid()
-                elif att.category == 'adhoc':
-                    total_charges += sess.get_cost_per_adhoc_player()
-                else:
-                    total_charges += sess.get_cost_per_regular_player()
-                total_charges += (att.additional_cost or 0)
-    total_collected = sum(p.amount for p in Payment.query.all())
-    total_outstanding = round(total_charges - total_collected, 2)
-    total_collected = round(total_collected, 2)
-
     # Monthly summary: last 6 months that have any session (archived or not), descending
     all_sessions_for_summary = Session.query.all()
     session_months = sorted(
@@ -427,6 +407,12 @@ def dashboard():
             'collected': round(m_collected, 2),
             'outstanding': round(m_charges - m_collected, 2),
         })
+
+    # Top cards: aggregate from the same 6 active months
+    total_collected = round(sum(r['collected'] for r in monthly_summary), 2)
+    total_outstanding = round(sum(r['outstanding'] for r in monthly_summary), 2)
+    total_charges = round(sum(r['charges'] for r in monthly_summary), 2)
+    active_sessions_all = [s for s in all_sessions_for_summary if not s.is_archived]
 
     # Pending approvals
     pending_approvals = Player.query.filter_by(is_approved=False).order_by(Player.created_at.desc()).all()
