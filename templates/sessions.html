@@ -237,6 +237,7 @@
                 </tr>
                 {% for player in regular_players %}
                 {% set stats = player_stats[player.id] %}
+                {% set ns_np = namespace(all_no=true) %}{% for sess in active_sessions %}{% set _s = attendance_map.get(sess.id, {}).get(player.id, '') %}{% if _s and _s != 'NO' %}{% set ns_np.all_no = false %}{% endif %}{% endfor %}
                 <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all"
                     x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ stats.balance }} <= 0) || (paymentFilter === 'unpaid' && {{ stats.balance }} > 0))">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
@@ -249,7 +250,12 @@
                                     {{ player.name[0] }}
                                 </div>
                                 {% endif %}
-                                <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
+                                <div>
+                                    <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
+                                    {% if ns_np.all_no and active_sessions %}
+                                    <span class="block text-[10px] font-bold text-gray-400 uppercase tracking-wide mt-0.5">Not Participating</span>
+                                    {% endif %}
+                                </div>
                             </a>
                         </div>
                     </td>
@@ -262,7 +268,7 @@
                             data-original="{{ status }}"
                             class="attendance-select w-20 text-xs py-1 px-1 rounded border
                             {% if status == 'YES' %}bg-green-100 border-green-500 text-green-700
-                            {% elif status == 'NO' %}bg-red-100 border-red-500 text-red-700
+                            {% elif status == 'NO' %}bg-gray-100 border-gray-300 text-gray-500
                             {% elif status == 'TENTATIVE' %}bg-yellow-100 border-yellow-500 text-yellow-700
                             {% elif status == 'FILLIN' %}bg-blue-100 border-blue-500 text-blue-700
                             {% elif status == 'DROPOUT' %}bg-orange-100 border-orange-500 text-orange-700
@@ -352,6 +358,7 @@
                 </tr>
                 {% for player in adhoc_players %}
                 {% set stats = player_stats[player.id] %}
+                {% set ns_np = namespace(all_no=true) %}{% for sess in active_sessions %}{% set _s = attendance_map.get(sess.id, {}).get(player.id, '') %}{% if _s and _s != 'NO' %}{% set ns_np.all_no = false %}{% endif %}{% endfor %}
                 <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all"
                     x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ stats.balance }} <= 0) || (paymentFilter === 'unpaid' && {{ stats.balance }} > 0))">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
@@ -364,7 +371,12 @@
                                     {{ player.name[0] }}
                                 </div>
                                 {% endif %}
-                                <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
+                                <div>
+                                    <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
+                                    {% if ns_np.all_no and active_sessions %}
+                                    <span class="block text-[10px] font-bold text-gray-400 uppercase tracking-wide mt-0.5">Not Participating</span>
+                                    {% endif %}
+                                </div>
                             </a>
                         </div>
                     </td>
@@ -377,7 +389,7 @@
                             data-original="{{ status }}"
                             class="attendance-select w-20 text-xs py-1 px-1 rounded border
                             {% if status == 'YES' %}bg-green-100 border-green-500 text-green-700
-                            {% elif status == 'NO' %}bg-red-100 border-red-500 text-red-700
+                            {% elif status == 'NO' %}bg-gray-100 border-gray-300 text-gray-500
                             {% elif status == 'TENTATIVE' %}bg-yellow-100 border-yellow-500 text-yellow-700
                             {% elif status == 'FILLIN' %}bg-blue-100 border-blue-500 text-blue-700
                             {% elif status == 'DROPOUT' %}bg-orange-100 border-orange-500 text-orange-700
@@ -467,6 +479,7 @@
                 </tr>
                 {% for player in kid_players %}
                 {% set stats = player_stats[player.id] %}
+                {% set ns_np = namespace(all_no=true) %}{% for sess in active_sessions %}{% set _s = attendance_map.get(sess.id, {}).get(player.id, '') %}{% if _s and _s != 'NO' %}{% set ns_np.all_no = false %}{% endif %}{% endfor %}
                 <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all"
                     x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ stats.balance }} <= 0) || (paymentFilter === 'unpaid' && {{ stats.balance }} > 0))">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
@@ -479,7 +492,12 @@
                                     {{ player.name[0] }}
                                 </div>
                                 {% endif %}
-                                <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
+                                <div>
+                                    <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
+                                    {% if ns_np.all_no and active_sessions %}
+                                    <span class="block text-[10px] font-bold text-gray-400 uppercase tracking-wide mt-0.5">Not Participating</span>
+                                    {% endif %}
+                                </div>
                             </a>
                         </div>
                     </td>
@@ -492,7 +510,7 @@
                             data-original="{{ status }}"
                             class="attendance-select w-20 text-xs py-1 px-1 rounded border
                             {% if status == 'YES' %}bg-green-100 border-green-500 text-green-700
-                            {% elif status == 'NO' %}bg-red-100 border-red-500 text-red-700
+                            {% elif status == 'NO' %}bg-gray-100 border-gray-300 text-gray-500
                             {% elif status == 'TENTATIVE' %}bg-yellow-100 border-yellow-500 text-yellow-700
                             {% elif status == 'FILLIN' %}bg-blue-100 border-blue-500 text-blue-700
                             {% elif status == 'DROPOUT' %}bg-orange-100 border-orange-500 text-orange-700

@@ -236,7 +236,7 @@
                 </span>
                 <span class="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full">
                     <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
-                    <span class="text-gray-600">Not Participating</span>
+                    <span class="text-gray-600">No / Not Participating</span>
                 </span>
                 <span class="flex items-center gap-1 px-2 py-1 bg-yellow-100 rounded-full">
                     <span class="w-2 h-2 bg-yellow-500 rounded-full"></span>
@@ -303,9 +303,12 @@
                         </select>
                     </td>
                     <td class="px-4 py-4 whitespace-nowrap text-center">
+                        {% if current_status == 'NO' %}
+                        <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500 border border-gray-300">Not Participating</span>
+                        {% endif %}
                         <select
                             onchange="updateAttendance({{ player.id }}, {{ session.id }}, this.value, this)"
-                            class="px-4 py-2 rounded-lg font-bold text-sm border-2 cursor-pointer transition-all
+                            class="{% if current_status == 'NO' %}mt-1 {% endif %}px-4 py-2 rounded-lg font-bold text-sm border-2 cursor-pointer transition-all
                             {% if current_status == 'YES' %}bg-green-100 border-green-300 text-green-700
                             {% elif current_status == 'TENTATIVE' %}bg-yellow-100 border-yellow-300 text-yellow-700
                             {% elif current_status == 'DROPOUT' %}bg-red-100 border-red-300 text-red-700
@@ -316,7 +319,7 @@
                             <option value="YES" selected>Yes</option>
                             <option value="DROPOUT">Dropout</option>
                             {% elif current_status == 'NO' %}
-                            <option value="NO" selected>Not Participating</option>
+                            <option value="NO" selected>No</option>
                             <option value="FILLIN">Fill-in</option>
                             {% elif current_status == 'TENTATIVE' %}
                             <option value="TENTATIVE" selected>Tentative</option>
@@ -326,15 +329,15 @@
                             <option value="YES">Yes</option>
                             <option value="DROPOUT" selected>Dropout</option>
                             {% elif current_status == 'FILLIN' %}
-                            <option value="NO">Not Participating</option>
+                            <option value="NO">No</option>
                             <option value="FILLIN" selected>Fill-in</option>
                             {% else %}
-                            <option value="NO" selected>Not Participating</option>
+                            <option value="NO" selected>No</option>
                             <option value="FILLIN">Fill-in</option>
                             {% endif %}
                             {% else %}
                             <option value="YES" {% if current_status == 'YES' %}selected{% endif %}>Yes</option>
-                            <option value="NO" {% if current_status == 'NO' %}selected{% endif %}>Not Participating</option>
+                            <option value="NO" {% if current_status == 'NO' %}selected{% endif %}>No</option>
                             <option value="TENTATIVE" {% if current_status == 'TENTATIVE' %}selected{% endif %}>Tentative</option>
                             <option value="DROPOUT" {% if current_status == 'DROPOUT' %}selected{% endif %}>Dropout</option>
                             <option value="FILLIN" {% if current_status == 'FILLIN' %}selected{% endif %}>Fill-in</option>
