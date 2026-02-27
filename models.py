@@ -23,6 +23,10 @@ class Player(db.Model):
     is_active = db.Column(db.Boolean, default=True, index=True)  # Active/Inactive status
     is_approved = db.Column(db.Boolean, default=False, index=True)  # Registration approval status
 
+    # Admin-managed fields for active sessions
+    additional_charges = db.Column(db.Float, default=0)  # Extra charges added by admin
+    admin_comments = db.Column(db.Text)  # Admin comments for this player
+
     # Audit fields
     created_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -112,6 +116,12 @@ class Session(db.Model):
     is_archived = db.Column(db.Boolean, default=False, index=True)
     voting_frozen = db.Column(db.Boolean, default=False)  # If True, players cannot change their votes
 
+    # Session time configuration (used when creating sessions, courts can override)
+    hours = db.Column(db.Float, default=3)  # Duration in hours (2, 3, or 3.5)
+    start_time = db.Column(db.String(10), default='06:30')  # HH:MM format
+    end_time = db.Column(db.String(10), default='09:30')  # HH:MM format
+    court_cost = db.Column(db.Float, default=105)  # Default cost per court based on hours
+
     # Audit fields
     created_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -151,22 +161,36 @@ class Session(db.Model):
         return self.courts.count()
 
     def get_suggested_courts(self):
-        """Suggest number of courts based on attendees (6 players per court)"""
+        """Suggest number of courts based on attendees (5 players per court)"""
         attendees = self.get_attendee_count()
         if attendees == 0:
-            return 1
+            return 0
         import math
-        return math.ceil(attendees / 6)
+        return math.ceil(attendees / 5)
 
     def get_total_cost(self):
         """Calculate total session cost from all courts"""
         return sum(court.cost for court in self.courts.all())
 
     def get_time_range(self):
-        """Get overall time range from all courts"""
+        """Get overall time range from all courts, or session defaults if no courts"""
         court_list = self.courts.all()
         if not court_list:
-            return "No courts", "No courts"
+            # Use session's stored times if no courts yet
+            if self.start_time and self.end_time:
+                # Convert HH:MM to display format
+                def format_time(time_str):
+                    try:
+                        h, m = map(int, time_str.split(':'))
+                        period = 'AM' if h < 12 else 'PM'
+                        display_h = h if h <= 12 else h - 12
+                        if display_h == 0:
+                            display_h = 12
+                        return f"{display_h}:{m:02d} {period}"
+                    except:
+                        return time_str
+                return format_time(self.start_time), format_time(self.end_time)
+            return "TBD", "TBD"
         start_times = [c.start_time for c in court_list]
         end_times = [c.end_time for c in court_list]
         return min(start_times), max(end_times)
@@ -335,6 +359,11 @@ class Attendance(db.Model):
     status = db.Column(db.String(20), nullable=False, default='NO', index=True)  # YES, NO, TENTATIVE, DROPOUT, FILLIN
     category = db.Column(db.String(20), default='regular', index=True)  # regular, adhoc, kid - category for this session
 
+    # Per-session payment tracking
+    payment_status = db.Column(db.String(20), default='unpaid', index=True)  # unpaid, paid
+    additional_cost = db.Column(db.Float, default=0)  # Extra charges for this player in this session
+    comments = db.Column(db.Text)  # Admin comments for this player in this session
+
     # Audit fields
     created_by = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -346,6 +375,14 @@ class Attendance(db.Model):
         db.Index('idx_attendance_status_category', 'status', 'category'),
     )
 
+    def get_session_cost(self):
+        """Calculate total cost for this player in this session (birdie + additional)"""
+        session = self.session
+        if self.status not in ['YES', 'DROPOUT', 'FILLIN']:
+            return 0
+        base_cost = session.birdie_cost if session else 0
+        return round(base_cost + (self.additional_cost or 0), 2)
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -353,6 +390,9 @@ class Attendance(db.Model):
             'session_id': self.session_id,
             'status': self.status,
             'category': self.category,
+            'payment_status': self.payment_status,
+            'additional_cost': self.additional_cost,
+            'comments': self.comments,
             'player_name': self.player.name if self.player else None
         }
 

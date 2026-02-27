@@ -213,17 +213,17 @@
                         </a>
                     </th>
                     {% endfor %}
-                    <th class="px-2 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[60px]">
-                        Birdie
+                    <th class="px-2 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[70px]">
+                        Add'l Charges
                     </th>
-                    <th class="px-2 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[80px]">
+                    <th class="px-2 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[70px]">
                         Total
                     </th>
                     <th class="px-2 py-3 text-center text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[70px]">
                         Status
                     </th>
-                    <th class="px-2 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[70px]">
-                        Refunded
+                    <th class="px-2 py-3 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider min-w-[120px]">
+                        Comments
                     </th>
                 </tr>
             </thead>
@@ -231,7 +231,7 @@
                 <!-- Regular Players Section -->
                 {% if regular_players %}
                 <tr class="bg-green-50">
-                    <td colspan="{{ active_sessions|length + 5 }}" class="px-4 py-2 text-xs font-bold text-green-700 uppercase tracking-wider sticky left-0 bg-green-50">
+                    <td colspan="{{ active_sessions|length + 4 }}" class="px-4 py-2 text-xs font-bold text-green-700 uppercase tracking-wider sticky left-0 bg-green-50">
                         Regular Players ({{ regular_players|length }})
                     </td>
                 </tr>
@@ -298,36 +298,46 @@
                     </td>
                     {% endfor %}
                     <td class="px-2 py-2 text-right whitespace-nowrap">
+                        <input type="number" step="0.01" min="0"
+                            value="{{ player.additional_charges or 0 }}"
+                            onchange="updatePlayerCharges({{ player.id }}, this.value)"
+                            data-player-id="{{ player.id }}"
+                            class="addl-charges-input w-16 px-1 py-0.5 text-xs text-right border border-gray-300 rounded focus:outline-none focus:border-wimbledon-green">
+                    </td>
+                    <td class="px-2 py-2 text-right whitespace-nowrap">
                         {% set birdie_total = namespace(total=0) %}
                         {% for session in active_sessions %}
-                            {% if attendance_map.get(session.id, {}).get(player.id) == 'YES' %}
+                            {% set att_status = attendance_map.get(session.id, {}).get(player.id, '') %}
+                            {% if att_status in ['YES', 'DROPOUT', 'FILLIN'] %}
                                 {% set birdie_total.total = birdie_total.total + session.birdie_cost %}
                             {% endif %}
                         {% endfor %}
-                        <span class="text-sm font-medium text-yellow-700">
-                            ${{ "%.2f"|format(birdie_total.total) }}
-                        </span>
-                    </td>
-                    <td class="px-2 py-2 text-right whitespace-nowrap">
-                        <span class="text-sm font-bold {% if stats.balance > 0 %}text-red-600{% elif stats.balance < 0 %}text-green-600{% else %}text-gray-500{% endif %}">
-                            ${{ "%.2f"|format(stats.balance) }}
+                        {% set total_amount = birdie_total.total + (player.additional_charges or 0) %}
+                        <span class="text-sm font-bold text-wimbledon-purple" data-player-total="{{ player.id }}" data-birdie="{{ birdie_total.total }}">
+                            ${{ "%.2f"|format(total_amount) }}
                         </span>
                     </td>
                     <td class="px-2 py-2 text-center whitespace-nowrap">
-                        {% if stats.balance > 0 %}
+                        {% set has_unpaid = namespace(val=false) %}
+                        {% for session in active_sessions %}
+                            {% set att_status = attendance_map.get(session.id, {}).get(player.id, '') %}
+                            {% set att_details = attendance_details.get(session.id, {}).get(player.id, {}) %}
+                            {% if att_status in ['YES', 'DROPOUT', 'FILLIN'] and att_details.get('payment_status', 'unpaid') == 'unpaid' %}
+                                {% set has_unpaid.val = true %}
+                            {% endif %}
+                        {% endfor %}
+                        {% if has_unpaid.val %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
-                        {% elif stats.pending_refunds > 0 %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">Refund Pending</span>
                         {% else %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
                         {% endif %}
                     </td>
-                    <td class="px-2 py-2 text-right whitespace-nowrap">
-                        {% if stats.total_refunded > 0 %}
-                        <span class="text-sm font-medium text-orange-600">${{ "%.2f"|format(stats.total_refunded) }}</span>
-                        {% else %}
-                        <span class="text-gray-400 text-xs">-</span>
-                        {% endif %}
+                    <td class="px-2 py-2 text-left">
+                        <input type="text"
+                            value="{{ player.admin_comments or '' }}"
+                            onchange="updatePlayerComments({{ player.id }}, this.value)"
+                            placeholder="Add comment..."
+                            class="w-full min-w-[100px] px-1 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:border-wimbledon-green">
                     </td>
                 </tr>
                 {% endfor %}
@@ -336,7 +346,7 @@
                 <!-- Adhoc Players Section -->
                 {% if adhoc_players %}
                 <tr class="bg-purple-50">
-                    <td colspan="{{ active_sessions|length + 5 }}" class="px-4 py-2 text-xs font-bold text-purple-700 uppercase tracking-wider sticky left-0 bg-purple-50">
+                    <td colspan="{{ active_sessions|length + 4 }}" class="px-4 py-2 text-xs font-bold text-purple-700 uppercase tracking-wider sticky left-0 bg-purple-50">
                         Adhoc Players ({{ adhoc_players|length }})
                     </td>
                 </tr>
@@ -403,36 +413,46 @@
                     </td>
                     {% endfor %}
                     <td class="px-2 py-2 text-right whitespace-nowrap">
+                        <input type="number" step="0.01" min="0"
+                            value="{{ player.additional_charges or 0 }}"
+                            onchange="updatePlayerCharges({{ player.id }}, this.value)"
+                            data-player-id="{{ player.id }}"
+                            class="addl-charges-input w-16 px-1 py-0.5 text-xs text-right border border-gray-300 rounded focus:outline-none focus:border-wimbledon-green">
+                    </td>
+                    <td class="px-2 py-2 text-right whitespace-nowrap">
                         {% set birdie_total = namespace(total=0) %}
                         {% for session in active_sessions %}
-                            {% if attendance_map.get(session.id, {}).get(player.id) == 'YES' %}
+                            {% set att_status = attendance_map.get(session.id, {}).get(player.id, '') %}
+                            {% if att_status in ['YES', 'DROPOUT', 'FILLIN'] %}
                                 {% set birdie_total.total = birdie_total.total + session.birdie_cost %}
                             {% endif %}
                         {% endfor %}
-                        <span class="text-sm font-medium text-yellow-700">
-                            ${{ "%.2f"|format(birdie_total.total) }}
-                        </span>
-                    </td>
-                    <td class="px-2 py-2 text-right whitespace-nowrap">
-                        <span class="text-sm font-bold {% if stats.balance > 0 %}text-red-600{% elif stats.balance < 0 %}text-green-600{% else %}text-gray-500{% endif %}">
-                            ${{ "%.2f"|format(stats.balance) }}
+                        {% set total_amount = birdie_total.total + (player.additional_charges or 0) %}
+                        <span class="text-sm font-bold text-wimbledon-purple" data-player-total="{{ player.id }}" data-birdie="{{ birdie_total.total }}">
+                            ${{ "%.2f"|format(total_amount) }}
                         </span>
                     </td>
                     <td class="px-2 py-2 text-center whitespace-nowrap">
-                        {% if stats.balance > 0 %}
+                        {% set has_unpaid = namespace(val=false) %}
+                        {% for session in active_sessions %}
+                            {% set att_status = attendance_map.get(session.id, {}).get(player.id, '') %}
+                            {% set att_details = attendance_details.get(session.id, {}).get(player.id, {}) %}
+                            {% if att_status in ['YES', 'DROPOUT', 'FILLIN'] and att_details.get('payment_status', 'unpaid') == 'unpaid' %}
+                                {% set has_unpaid.val = true %}
+                            {% endif %}
+                        {% endfor %}
+                        {% if has_unpaid.val %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
-                        {% elif stats.pending_refunds > 0 %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">Refund Pending</span>
                         {% else %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
                         {% endif %}
                     </td>
-                    <td class="px-2 py-2 text-right whitespace-nowrap">
-                        {% if stats.total_refunded > 0 %}
-                        <span class="text-sm font-medium text-orange-600">${{ "%.2f"|format(stats.total_refunded) }}</span>
-                        {% else %}
-                        <span class="text-gray-400 text-xs">-</span>
-                        {% endif %}
+                    <td class="px-2 py-2 text-left">
+                        <input type="text"
+                            value="{{ player.admin_comments or '' }}"
+                            onchange="updatePlayerComments({{ player.id }}, this.value)"
+                            placeholder="Add comment..."
+                            class="w-full min-w-[100px] px-1 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:border-wimbledon-green">
                     </td>
                 </tr>
                 {% endfor %}
@@ -441,7 +461,7 @@
                 <!-- Kid Players Section -->
                 {% if kid_players %}
                 <tr class="bg-blue-50">
-                    <td colspan="{{ active_sessions|length + 5 }}" class="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider sticky left-0 bg-blue-50">
+                    <td colspan="{{ active_sessions|length + 4 }}" class="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider sticky left-0 bg-blue-50">
                         Kids ({{ kid_players|length }})
                     </td>
                 </tr>
@@ -508,28 +528,46 @@
                     </td>
                     {% endfor %}
                     <td class="px-2 py-2 text-right whitespace-nowrap">
-                        <span class="text-sm font-medium text-gray-400">$0.00</span>
+                        <input type="number" step="0.01" min="0"
+                            value="{{ player.additional_charges or 0 }}"
+                            onchange="updatePlayerCharges({{ player.id }}, this.value)"
+                            data-player-id="{{ player.id }}"
+                            class="addl-charges-input w-16 px-1 py-0.5 text-xs text-right border border-gray-300 rounded focus:outline-none focus:border-wimbledon-green">
                     </td>
                     <td class="px-2 py-2 text-right whitespace-nowrap">
-                        <span class="text-sm font-bold {% if stats.balance > 0 %}text-red-600{% elif stats.balance < 0 %}text-green-600{% else %}text-gray-500{% endif %}">
-                            ${{ "%.2f"|format(stats.balance) }}
+                        {% set birdie_total = namespace(total=0) %}
+                        {% for session in active_sessions %}
+                            {% set att_status = attendance_map.get(session.id, {}).get(player.id, '') %}
+                            {% if att_status in ['YES', 'DROPOUT', 'FILLIN'] %}
+                                {% set birdie_total.total = birdie_total.total + session.birdie_cost %}
+                            {% endif %}
+                        {% endfor %}
+                        {% set total_amount = birdie_total.total + (player.additional_charges or 0) %}
+                        <span class="text-sm font-bold text-wimbledon-purple" data-player-total="{{ player.id }}" data-birdie="{{ birdie_total.total }}">
+                            ${{ "%.2f"|format(total_amount) }}
                         </span>
                     </td>
                     <td class="px-2 py-2 text-center whitespace-nowrap">
-                        {% if stats.balance > 0 %}
+                        {% set has_unpaid = namespace(val=false) %}
+                        {% for session in active_sessions %}
+                            {% set att_status = attendance_map.get(session.id, {}).get(player.id, '') %}
+                            {% set att_details = attendance_details.get(session.id, {}).get(player.id, {}) %}
+                            {% if att_status in ['YES', 'DROPOUT', 'FILLIN'] and att_details.get('payment_status', 'unpaid') == 'unpaid' %}
+                                {% set has_unpaid.val = true %}
+                            {% endif %}
+                        {% endfor %}
+                        {% if has_unpaid.val %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Unpaid</span>
-                        {% elif stats.pending_refunds > 0 %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">Refund Pending</span>
                         {% else %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">Paid</span>
                         {% endif %}
                     </td>
-                    <td class="px-2 py-2 text-right whitespace-nowrap">
-                        {% if stats.total_refunded > 0 %}
-                        <span class="text-sm font-medium text-orange-600">${{ "%.2f"|format(stats.total_refunded) }}</span>
-                        {% else %}
-                        <span class="text-gray-400 text-xs">-</span>
-                        {% endif %}
+                    <td class="px-2 py-2 text-left">
+                        <input type="text"
+                            value="{{ player.admin_comments or '' }}"
+                            onchange="updatePlayerComments({{ player.id }}, this.value)"
+                            placeholder="Add comment..."
+                            class="w-full min-w-[100px] px-1 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:border-wimbledon-green">
                     </td>
                 </tr>
                 {% endfor %}
@@ -638,6 +676,69 @@ function discardAllChanges() {
 
     pendingChanges.clear();
     updateSaveBar();
+}
+
+// Update player additional charges
+function updatePlayerCharges(playerId, charges) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const chargesValue = parseFloat(charges) || 0;
+
+    fetch('/api/player/additional-charges', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            player_id: playerId,
+            additional_charges: chargesValue
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the total display
+            const totalSpan = document.querySelector(`[data-player-total="${playerId}"]`);
+            if (totalSpan) {
+                const birdie = parseFloat(totalSpan.dataset.birdie) || 0;
+                const newTotal = birdie + chargesValue;
+                totalSpan.textContent = '$' + newTotal.toFixed(2);
+            }
+        } else {
+            alert('Failed to update additional charges');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update additional charges');
+    });
+}
+
+// Update player comments
+function updatePlayerComments(playerId, comments) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    fetch('/api/player/comments', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            player_id: playerId,
+            comments: comments
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            alert('Failed to update comments');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update comments');
+    });
 }
 
 </script>

@@ -925,12 +925,21 @@ def sessions():
     all_attendances = Attendance.query.filter(Attendance.session_id.in_(active_session_ids)).all() if active_session_ids else []
 
     # Build attendance map: {session_id: {player_id: status}}
+    # Build attendance details: {session_id: {player_id: {status, payment_status, additional_cost, comments}}}
     attendance_map = {}
+    attendance_details = {}
     for sess in active_sessions:
         attendance_map[sess.id] = {}
+        attendance_details[sess.id] = {}
     for att in all_attendances:
         if att.session_id in attendance_map:
             attendance_map[att.session_id][att.player_id] = att.status
+            attendance_details[att.session_id][att.player_id] = {
+                'status': att.status,
+                'payment_status': att.payment_status or 'unpaid',
+                'additional_cost': att.additional_cost or 0,
+                'comments': att.comments or ''
+            }
 
     # Get cached monthly summary (expensive calculation)
     monthly_sorted = get_cached_monthly_summary()
@@ -989,6 +998,7 @@ def sessions():
                           adhoc_players=adhoc_players,
                           kid_players=kid_players,
                           attendance_map=attendance_map,
+                          attendance_details=attendance_details,
                           player_stats=player_stats)
 
 
@@ -996,48 +1006,48 @@ def sessions():
 @admin_required
 def add_session():
     if request.method == 'POST':
-        date_str = request.form.get('date')
-        birdie_cost = float(request.form.get('birdie_cost', 0))
-        notes = request.form.get('notes')
-        court_count = int(request.form.get('court_count', 1))
+        birdie_cost = float(request.form.get('birdie_cost', 2))
+        notes = request.form.get('notes', '')
 
-        session_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        # Get all dates to create sessions for
+        date_count = int(request.form.get('date_count', 1))
+        created_sessions = []
 
-        new_session = Session(
-            date=session_date,
-            birdie_cost=birdie_cost,
-            notes=notes
-        )
-        db.session.add(new_session)
-        db.session.flush()  # Get the session ID
-
-        # Add courts
-        for i in range(court_count):
-            court_name = request.form.get(f'court_name_{i}', f'Court {i+1}')
-            court_type = request.form.get(f'court_type_{i}', 'regular')
-            court_start = request.form.get(f'court_start_{i}', '6:30 AM')
-            court_end = request.form.get(f'court_end_{i}', '9:30 AM')
-            court_cost = float(request.form.get(f'court_cost_{i}', 30))
-
-            court = Court(
-                session_id=new_session.id,
-                name=court_name,
-                court_type=court_type,
-                start_time=court_start,
-                end_time=court_end,
-                cost=court_cost
-            )
-            db.session.add(court)
-
-        # Create attendance records for all players (default NO, category from player)
         players = Player.query.all()
-        for player in players:
-            attendance = Attendance(player_id=player.id, session_id=new_session.id, status='NO', category=player.category)
-            db.session.add(attendance)
-        db.session.commit()
 
-        flash('Session created successfully!', 'success')
-        return redirect(url_for('session_detail', id=new_session.id))
+        for i in range(date_count):
+            date_str = request.form.get(f'date_{i}')
+            if not date_str:
+                continue
+
+            session_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+
+            new_session = Session(
+                date=session_date,
+                birdie_cost=birdie_cost,
+                notes=notes
+            )
+            db.session.add(new_session)
+            db.session.flush()
+
+            # No courts added during creation - they will be added when editing individual sessions
+
+            # Create attendance records for all players (default NO, category from player)
+            for player in players:
+                attendance = Attendance(player_id=player.id, session_id=new_session.id, status='NO', category=player.category)
+                db.session.add(attendance)
+
+            created_sessions.append(new_session)
+
+        db.session.commit()
+        clear_session_cache()
+
+        if len(created_sessions) == 1:
+            flash('Session created! Edit the session to add courts.', 'success')
+            return redirect(url_for('session_detail', id=created_sessions[0].id))
+        else:
+            flash(f'{len(created_sessions)} sessions created! Edit each session to add courts.', 'success')
+            return redirect(url_for('sessions'))
 
     return render_template('session_form.html', session=None)
 
@@ -1051,9 +1061,11 @@ def session_detail(id):
     # Get attendance for all players
     attendance_map = {}
     category_map = {}
+    attendance_records = {}  # Full attendance records for additional fields
     for att in sess.attendances.all():
         attendance_map[att.player_id] = att.status
         category_map[att.player_id] = att.category
+        attendance_records[att.player_id] = att
 
     # Ensure all players have attendance records
     for player in players:
@@ -1062,9 +1074,31 @@ def session_detail(id):
             db.session.add(attendance)
             attendance_map[player.id] = 'NO'
             category_map[player.id] = player.category
+            db.session.flush()
+            attendance_records[player.id] = attendance
     db.session.commit()
 
-    return render_template('session_detail.html', session=sess, players=players, attendance_map=attendance_map, category_map=category_map)
+    # Calculate per-player session costs for bulk payment
+    player_session_costs = {}
+    for player in players:
+        if player.is_active:
+            att = attendance_records.get(player.id)
+            if att and att.status in ['YES', 'DROPOUT', 'FILLIN']:
+                cat = att.category
+                if cat == 'kid':
+                    base = sess.get_cost_per_kid()
+                elif cat == 'adhoc':
+                    base = sess.get_cost_per_adhoc_player()
+                else:
+                    base = sess.get_cost_per_regular_player()
+                player_session_costs[player.id] = round(base + (att.additional_cost or 0), 2)
+            else:
+                player_session_costs[player.id] = 0
+
+    return render_template('session_detail.html', session=sess, players=players,
+                          attendance_map=attendance_map, category_map=category_map,
+                          attendance_records=attendance_records,
+                          player_session_costs=player_session_costs)
 
 
 @app.route('/sessions/<int:id>/edit', methods=['GET', 'POST'])
@@ -1076,7 +1110,33 @@ def edit_session(id):
         sess.date = datetime.strptime(request.form.get('date'), '%Y-%m-%d').date()
         sess.birdie_cost = float(request.form.get('birdie_cost', 0))
         sess.notes = request.form.get('notes')
-        court_count = int(request.form.get('court_count', 1))
+
+        # Update time configuration
+        sess.hours = float(request.form.get('hours', 3))
+        sess.start_time = request.form.get('start_time', '06:30')
+        sess.end_time = request.form.get('end_time', '09:30')
+
+        # Calculate court cost based on hours
+        if sess.hours == 2:
+            sess.court_cost = 75
+        elif sess.hours == 3.5:
+            sess.court_cost = 90
+        else:
+            sess.court_cost = 105
+
+        # Format times for court display
+        def format_time(time_str):
+            h, m = map(int, time_str.split(':'))
+            period = 'AM' if h < 12 else 'PM'
+            display_h = h if h <= 12 else h - 12
+            if display_h == 0:
+                display_h = 12
+            return f"{display_h}:{m:02d} {period}"
+
+        start_time_display = format_time(sess.start_time)
+        end_time_display = format_time(sess.end_time)
+
+        court_count = int(request.form.get('court_count', 0))
 
         # Delete existing courts and recreate
         Court.query.filter_by(session_id=id).delete()
@@ -1085,21 +1145,20 @@ def edit_session(id):
         for i in range(court_count):
             court_name = request.form.get(f'court_name_{i}', f'Court {i+1}')
             court_type = request.form.get(f'court_type_{i}', 'regular')
-            court_start = request.form.get(f'court_start_{i}', '6:30 AM')
-            court_end = request.form.get(f'court_end_{i}', '9:30 AM')
-            court_cost = float(request.form.get(f'court_cost_{i}', 30))
+            court_cost = float(request.form.get(f'court_cost_{i}', sess.court_cost))
 
             court = Court(
                 session_id=id,
                 name=court_name,
                 court_type=court_type,
-                start_time=court_start,
-                end_time=court_end,
+                start_time=start_time_display,
+                end_time=end_time_display,
                 cost=court_cost
             )
             db.session.add(court)
 
         db.session.commit()
+        clear_session_cache()
         flash('Session updated successfully!', 'success')
         return redirect(url_for('session_detail', id=id))
 
@@ -1708,6 +1767,149 @@ def update_attendance_category():
         'session_id': session_id,
         'category': category
     })
+
+
+@app.route('/api/attendance/additional-cost', methods=['POST'])
+@csrf.exempt
+@admin_required
+def update_attendance_additional_cost():
+    data = request.get_json()
+    player_id = data.get('player_id')
+    session_id = data.get('session_id')
+    additional_cost = float(data.get('additional_cost', 0))
+
+    attendance = Attendance.query.filter_by(player_id=player_id, session_id=session_id).first()
+
+    if attendance:
+        attendance.additional_cost = additional_cost
+        db.session.commit()
+        return jsonify({'success': True})
+
+    return jsonify({'error': 'Attendance record not found'}), 404
+
+
+@app.route('/api/attendance/payment-status', methods=['POST'])
+@csrf.exempt
+@admin_required
+def update_attendance_payment_status():
+    data = request.get_json()
+    player_id = data.get('player_id')
+    session_id = data.get('session_id')
+    payment_status = data.get('payment_status')
+
+    if payment_status not in ['unpaid', 'paid']:
+        return jsonify({'error': 'Invalid payment status'}), 400
+
+    attendance = Attendance.query.filter_by(player_id=player_id, session_id=session_id).first()
+
+    if attendance:
+        attendance.payment_status = payment_status
+        db.session.commit()
+        return jsonify({'success': True})
+
+    return jsonify({'error': 'Attendance record not found'}), 404
+
+
+@app.route('/api/attendance/comments', methods=['POST'])
+@csrf.exempt
+@admin_required
+def update_attendance_comments():
+    data = request.get_json()
+    player_id = data.get('player_id')
+    session_id = data.get('session_id')
+    comments = data.get('comments', '')
+
+    attendance = Attendance.query.filter_by(player_id=player_id, session_id=session_id).first()
+
+    if attendance:
+        attendance.comments = comments
+        db.session.commit()
+        return jsonify({'success': True})
+
+    return jsonify({'error': 'Attendance record not found'}), 404
+
+
+@app.route('/api/bulk-session-payment', methods=['POST'])
+@csrf.exempt
+@admin_required
+def bulk_session_payment():
+    """Record payments for multiple players in a session at once"""
+    data = request.get_json()
+    session_id = data.get('session_id')
+    payments_data = data.get('payments', [])
+    method = data.get('method', 'Zelle')
+
+    if not session_id or not payments_data:
+        return jsonify({'error': 'Missing required data'}), 400
+
+    sess = Session.query.get(session_id)
+    if not sess:
+        return jsonify({'error': 'Session not found'}), 404
+
+    session_date_str = sess.date.strftime("%b %d, %Y")
+    count = 0
+    for p_data in payments_data:
+        player_id = p_data.get('player_id')
+        amount = float(p_data.get('amount', 0))
+
+        if not player_id or amount <= 0:
+            continue
+
+        player = Player.query.get(player_id)
+        if not player:
+            continue
+
+        payment = Payment(
+            player_id=player_id,
+            amount=amount,
+            method=method,
+            date=datetime.utcnow(),
+            notes=f'Session {session_date_str}'
+        )
+        db.session.add(payment)
+
+        att = Attendance.query.filter_by(player_id=player_id, session_id=session_id).first()
+        if att:
+            att.payment_status = 'paid'
+
+        count += 1
+
+    db.session.commit()
+    return jsonify({'success': True, 'count': count})
+
+
+@app.route('/api/player/additional-charges', methods=['POST'])
+@csrf.exempt
+@admin_required
+def update_player_additional_charges():
+    data = request.get_json()
+    player_id = data.get('player_id')
+    additional_charges = float(data.get('additional_charges', 0))
+
+    player = Player.query.get(player_id)
+    if player:
+        player.additional_charges = additional_charges
+        db.session.commit()
+        return jsonify({'success': True})
+
+    return jsonify({'error': 'Player not found'}), 404
+
+
+@app.route('/api/player/comments', methods=['POST'])
+@csrf.exempt
+@admin_required
+def update_player_comments():
+    data = request.get_json()
+    player_id = data.get('player_id')
+    comments = data.get('comments', '')
+
+    player = Player.query.get(player_id)
+    if player:
+        player.admin_comments = comments
+        db.session.commit()
+        return jsonify({'success': True})
+
+    return jsonify({'error': 'Player not found'}), 404
 
 
 # Payment routes

@@ -236,7 +236,7 @@
                 </span>
                 <span class="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full">
                     <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
-                    <span class="text-gray-600">No</span>
+                    <span class="text-gray-600">Not Participating</span>
                 </span>
                 <span class="flex items-center gap-1 px-2 py-1 bg-yellow-100 rounded-full">
                     <span class="w-2 h-2 bg-yellow-500 rounded-full"></span>
@@ -257,18 +257,22 @@
         <table class="min-w-full">
             <thead>
                 <tr class="bg-wimbledon-cream border-b border-wimbledon-gold/20">
-                    <th class="px-6 py-3 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Player</th>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Category</th>
-                    <th class="px-6 py-3 text-center text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-center text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Payment Status</th>
-                    <th class="px-6 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Paid Amount</th>
+                    <th class="px-4 py-3 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Player</th>
+                    <th class="px-4 py-3 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Category</th>
+                    <th class="px-4 py-3 text-center text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Status</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Session Cost</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Additional Cost</th>
+                    <th class="px-4 py-3 text-center text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Payment</th>
+                    <th class="px-4 py-3 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Comments</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-wimbledon-gold/10">
                 {% for player in players %}
                 {% if player.is_active %}
+                {% set att = attendance_records.get(player.id) %}
+                {% set current_status = attendance_map.get(player.id, 'NO') %}
                 <tr class="hover:bg-wimbledon-cream/50 transition-all">
-                    <td class="px-6 py-4 whitespace-nowrap">
+                    <td class="px-4 py-4 whitespace-nowrap">
                         <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-3 group">
                             {% if player.profile_photo %}
                             <img src="{{ url_for('static', filename='uploads/' + player.profile_photo) }}" alt="" class="w-10 h-10 rounded-full object-cover border-2 border-wimbledon-gold/30 shadow-md">
@@ -285,7 +289,7 @@
                             </div>
                         </a>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
+                    <td class="px-4 py-4 whitespace-nowrap">
                         {% set player_category = category_map.get(player.id, player.category) %}
                         <select
                             onchange="updateCategory({{ player.id }}, {{ session.id }}, this.value, this)"
@@ -298,8 +302,7 @@
                             <option value="kid" {% if player_category == 'kid' %}selected{% endif %}>Kid</option>
                         </select>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                        {% set current_status = attendance_map.get(player.id, 'NO') %}
+                    <td class="px-4 py-4 whitespace-nowrap text-center">
                         <select
                             onchange="updateAttendance({{ player.id }}, {{ session.id }}, this.value, this)"
                             class="px-4 py-2 rounded-lg font-bold text-sm border-2 cursor-pointer transition-all
@@ -309,12 +312,11 @@
                             {% elif current_status == 'FILLIN' %}bg-blue-100 border-blue-300 text-blue-700
                             {% else %}bg-gray-100 border-gray-300 text-gray-600{% endif %}">
                             {% if session.voting_frozen %}
-                            <!-- When frozen, only allow Dropout and Fill-in changes -->
                             {% if current_status == 'YES' %}
                             <option value="YES" selected>Yes</option>
                             <option value="DROPOUT">Dropout</option>
                             {% elif current_status == 'NO' %}
-                            <option value="NO" selected>No</option>
+                            <option value="NO" selected>Not Participating</option>
                             <option value="FILLIN">Fill-in</option>
                             {% elif current_status == 'TENTATIVE' %}
                             <option value="TENTATIVE" selected>Tentative</option>
@@ -324,38 +326,51 @@
                             <option value="YES">Yes</option>
                             <option value="DROPOUT" selected>Dropout</option>
                             {% elif current_status == 'FILLIN' %}
-                            <option value="NO">No</option>
+                            <option value="NO">Not Participating</option>
                             <option value="FILLIN" selected>Fill-in</option>
                             {% else %}
-                            <option value="NO" selected>No</option>
+                            <option value="NO" selected>Not Participating</option>
                             <option value="FILLIN">Fill-in</option>
                             {% endif %}
                             {% else %}
-                            <!-- Normal options when not frozen -->
                             <option value="YES" {% if current_status == 'YES' %}selected{% endif %}>Yes</option>
-                            <option value="NO" {% if current_status == 'NO' %}selected{% endif %}>No</option>
+                            <option value="NO" {% if current_status == 'NO' %}selected{% endif %}>Not Participating</option>
                             <option value="TENTATIVE" {% if current_status == 'TENTATIVE' %}selected{% endif %}>Tentative</option>
                             <option value="DROPOUT" {% if current_status == 'DROPOUT' %}selected{% endif %}>Dropout</option>
                             <option value="FILLIN" {% if current_status == 'FILLIN' %}selected{% endif %}>Fill-in</option>
                             {% endif %}
                         </select>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                        {% set balance = player.get_balance() %}
-                        {% if balance <= 0 %}
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-300">
-                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            Paid
-                        </span>
+                    <td class="px-4 py-4 whitespace-nowrap text-right">
+                        {% if current_status in ['YES', 'DROPOUT', 'FILLIN'] %}
+                        <span class="text-sm font-bold text-gray-700">${{ "%.2f"|format(session.birdie_cost) }}</span>
                         {% else %}
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-300">
-                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01"></path></svg>
-                            Unpaid
-                        </span>
+                        <span class="text-sm text-gray-400">-</span>
                         {% endif %}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right">
-                        <span class="text-sm font-bold text-wimbledon-green">${{ "%.2f"|format(player.get_total_payments()) }}</span>
+                    <td class="px-4 py-4 whitespace-nowrap text-right">
+                        <input type="number" step="0.01" min="0"
+                            value="{{ att.additional_cost if att and att.additional_cost else 0 }}"
+                            onchange="updateAdditionalCost({{ player.id }}, {{ session.id }}, this.value)"
+                            class="w-20 px-2 py-1 text-sm text-right border border-gray-300 rounded-lg focus:outline-none focus:border-wimbledon-green">
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-center">
+                        {% set payment_status = att.payment_status if att else 'unpaid' %}
+                        <select
+                            onchange="updatePaymentStatus({{ player.id }}, {{ session.id }}, this.value, this)"
+                            class="px-3 py-1.5 text-xs font-bold rounded-full border-2 cursor-pointer transition-all
+                            {% if payment_status == 'paid' %}bg-green-100 border-green-300 text-green-700
+                            {% else %}bg-red-100 border-red-300 text-red-700{% endif %}">
+                            <option value="unpaid" {% if payment_status == 'unpaid' %}selected{% endif %}>Unpaid</option>
+                            <option value="paid" {% if payment_status == 'paid' %}selected{% endif %}>Paid</option>
+                        </select>
+                    </td>
+                    <td class="px-4 py-4">
+                        <input type="text"
+                            value="{{ att.comments if att and att.comments else '' }}"
+                            onchange="updateComments({{ player.id }}, {{ session.id }}, this.value)"
+                            placeholder="Add comment..."
+                            class="w-full min-w-[150px] px-2 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-wimbledon-green">
                     </td>
                 </tr>
                 {% endif %}
@@ -364,10 +379,162 @@
         </table>
     </div>
 </div>
+
+{% set ns = namespace(has_participants=false) %}
+{% for player in players %}{% if player.is_active and attendance_map.get(player.id, 'NO') in ['YES', 'DROPOUT', 'FILLIN'] %}{% set ns.has_participants = true %}{% endif %}{% endfor %}
+
+{% if ns.has_participants %}
+<!-- Bulk Payment Section -->
+<div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 mt-6 overflow-hidden" x-data="bulkPayment()">
+    <div class="px-6 py-4 border-b border-wimbledon-gold/20 bg-gradient-to-r from-wimbledon-green/10 to-white">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h2 class="text-lg font-serif font-bold text-gray-800 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-wimbledon-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                </svg>
+                Record Session Payments
+            </h2>
+            <div class="flex flex-wrap items-center gap-3">
+                <select x-model="method" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-wimbledon-green bg-white">
+                    <option value="Zelle">Zelle</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Venmo">Venmo</option>
+                    <option value="Refund">Refund</option>
+                </select>
+                <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+                    <input type="checkbox" :checked="allSelected" @change="toggleAll($event.target.checked)" class="rounded border-gray-300 text-wimbledon-green cursor-pointer w-4 h-4">
+                    <span>Select All</span>
+                </label>
+                <button @click="recordPayments()" :disabled="loading || selectedCount === 0"
+                    class="px-4 py-2 bg-wimbledon-green text-white rounded-lg text-sm font-medium hover:bg-wimbledon-green/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2">
+                    <svg x-show="loading" class="animate-spin w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    <span x-text="loading ? 'Recording...' : 'Record Payments (' + selectedCount + ')'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full">
+            <thead>
+                <tr class="bg-wimbledon-cream border-b border-wimbledon-gold/20">
+                    <th class="px-4 py-3 w-10"></th>
+                    <th class="px-4 py-3 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Player</th>
+                    <th class="px-4 py-3 text-center text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Status</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Session Cost</th>
+                    <th class="px-4 py-3 text-center text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Paid?</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Amount to Record</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-wimbledon-gold/10">
+                {% for player in players %}
+                {% if player.is_active %}
+                {% set att = attendance_records.get(player.id) %}
+                {% set current_status = attendance_map.get(player.id, 'NO') %}
+                {% if current_status in ['YES', 'DROPOUT', 'FILLIN'] %}
+                {% set owed = player_session_costs.get(player.id, 0) %}
+                {% set payment_status = att.payment_status if att else 'unpaid' %}
+                <tr class="hover:bg-wimbledon-cream/50 transition-all" :class="{ 'opacity-60': !selected[{{ player.id }}] }">
+                    <td class="px-4 py-3 text-center">
+                        <input type="checkbox" x-model="selected[{{ player.id }}]" class="rounded border-gray-300 text-wimbledon-green w-4 h-4 cursor-pointer">
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap">
+                        <div class="flex items-center gap-3">
+                            {% if player.profile_photo %}
+                            <img src="{{ url_for('static', filename='uploads/' + player.profile_photo) }}" alt="" class="w-8 h-8 rounded-full object-cover border border-wimbledon-gold/30">
+                            {% else %}
+                            <div class="w-8 h-8 gradient-primary rounded-full flex items-center justify-center text-white text-xs font-bold">{{ player.name[0].upper() }}</div>
+                            {% endif %}
+                            <span class="font-medium text-gray-800">{{ player.name }}</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-center">
+                        <span class="px-2 py-1 text-xs font-bold rounded-full {% if current_status == 'YES' %}bg-green-100 text-green-700{% elif current_status == 'DROPOUT' %}bg-red-100 text-red-700{% else %}bg-blue-100 text-blue-700{% endif %}">
+                            {{ current_status }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-right font-bold text-gray-700">${{ "%.2f"|format(owed) }}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-center">
+                        <span class="px-2 py-1 text-xs font-bold rounded-full {% if payment_status == 'paid' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
+                            {{ 'Paid' if payment_status == 'paid' else 'Unpaid' }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-right">
+                        <input type="number" step="0.01" min="0" x-model="amounts[{{ player.id }}]"
+                            class="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded-lg focus:outline-none focus:border-wimbledon-green">
+                    </td>
+                </tr>
+                {% endif %}
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script>
+const SESSION_ID = {{ session.id }};
+
+function bulkPayment() {
+    const selected = {
+        {% for player in players %}{% if player.is_active %}{% set att = attendance_records.get(player.id) %}{% set s = attendance_map.get(player.id, 'NO') %}{% if s in ['YES', 'DROPOUT', 'FILLIN'] %}{{ player.id }}: {{ 'false' if att and att.payment_status == 'paid' else 'true' }},
+        {% endif %}{% endif %}{% endfor %}
+    };
+    const amounts = {
+        {% for player in players %}{% if player.is_active %}{% set s = attendance_map.get(player.id, 'NO') %}{% if s in ['YES', 'DROPOUT', 'FILLIN'] %}{{ player.id }}: {{ player_session_costs.get(player.id, 0) }},
+        {% endif %}{% endif %}{% endfor %}
+    };
+    return {
+        selected,
+        amounts,
+        method: 'Zelle',
+        loading: false,
+        get selectedCount() {
+            return Object.values(this.selected).filter(Boolean).length;
+        },
+        get allSelected() {
+            const keys = Object.keys(this.selected);
+            return keys.length > 0 && keys.every(k => this.selected[k]);
+        },
+        toggleAll(val) {
+            Object.keys(this.selected).forEach(k => { this.selected[k] = val; });
+        },
+        async recordPayments() {
+            const payments = Object.entries(this.selected)
+                .filter(([, checked]) => checked)
+                .map(([id]) => ({ player_id: parseInt(id), amount: parseFloat(this.amounts[id]) || 0 }))
+                .filter(p => p.amount > 0);
+            if (payments.length === 0) {
+                alert('No players selected or all amounts are zero');
+                return;
+            }
+            this.loading = true;
+            try {
+                const res = await fetch('/api/bulk-session-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: SESSION_ID, payments, method: this.method })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                    this.loading = false;
+                }
+            } catch (e) {
+                alert('Failed to record payments');
+                this.loading = false;
+            }
+        }
+    };
+}
+
 function updateAttendance(playerId, sessionId, status, selectElement) {
     fetch('/api/attendance', {
         method: 'POST',
@@ -422,7 +589,6 @@ function updateCategory(playerId, sessionId, category, selectElement) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Update select styling based on new category
             selectElement.className = 'px-3 py-1.5 text-xs leading-5 font-bold rounded-full shadow-sm border-2 cursor-pointer transition-all ';
             if (category === 'regular') {
                 selectElement.className += 'bg-green-100 border-green-300 text-green-700';
@@ -436,6 +602,83 @@ function updateCategory(playerId, sessionId, category, selectElement) {
     .catch(error => {
         console.error('Error:', error);
         alert('Failed to update category');
+    });
+}
+
+function updateAdditionalCost(playerId, sessionId, cost) {
+    fetch('/api/attendance/additional-cost', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            player_id: playerId,
+            session_id: sessionId,
+            additional_cost: parseFloat(cost) || 0
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            alert('Failed to update additional cost');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update additional cost');
+    });
+}
+
+function updatePaymentStatus(playerId, sessionId, status, selectElement) {
+    fetch('/api/attendance/payment-status', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            player_id: playerId,
+            session_id: sessionId,
+            payment_status: status
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            selectElement.className = 'px-3 py-1.5 text-xs font-bold rounded-full border-2 cursor-pointer transition-all ';
+            if (status === 'paid') {
+                selectElement.className += 'bg-green-100 border-green-300 text-green-700';
+            } else {
+                selectElement.className += 'bg-red-100 border-red-300 text-red-700';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update payment status');
+    });
+}
+
+function updateComments(playerId, sessionId, comments) {
+    fetch('/api/attendance/comments', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            player_id: playerId,
+            session_id: sessionId,
+            comments: comments
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            alert('Failed to update comments');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update comments');
     });
 }
 </script>
