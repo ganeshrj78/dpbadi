@@ -1932,6 +1932,47 @@ def payments():
                          outstanding_balances=balances)
 
 
+@app.route('/api/bulk-payment', methods=['POST'])
+@csrf.exempt
+@admin_required
+def bulk_payment_api():
+    """Record payments for multiple players at once (general, not session-specific)"""
+    data = request.get_json()
+    payments_data = data.get('payments', [])
+    method = data.get('method', 'Zelle')
+    date_str = data.get('date')
+
+    if not payments_data:
+        return jsonify({'error': 'No payments provided'}), 400
+
+    payment_date = datetime.strptime(date_str, '%Y-%m-%d') if date_str else datetime.utcnow()
+
+    count = 0
+    for p_data in payments_data:
+        player_id = p_data.get('player_id')
+        amount = float(p_data.get('amount', 0))
+
+        if not player_id or amount <= 0:
+            continue
+
+        player = Player.query.get(player_id)
+        if not player:
+            continue
+
+        payment = Payment(
+            player_id=player_id,
+            amount=amount,
+            method=method,
+            date=payment_date,
+            notes=p_data.get('notes', '')
+        )
+        db.session.add(payment)
+        count += 1
+
+    db.session.commit()
+    return jsonify({'success': True, 'count': count})
+
+
 @app.route('/payments/add', methods=['GET', 'POST'])
 @admin_required
 def add_payment():

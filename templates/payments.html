@@ -48,6 +48,97 @@
     </div>
 </div>
 
+{% if outstanding_balances %}
+<!-- Bulk Payment Section -->
+<div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 mb-8 overflow-hidden" x-data="bulkPaymentGlobal()">
+    <div class="px-6 py-4 border-b border-wimbledon-gold/20 bg-gradient-to-r from-wimbledon-green/10 to-white">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h2 class="text-lg font-serif font-bold text-gray-800 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-wimbledon-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                </svg>
+                Bulk Payment
+            </h2>
+            <div class="flex flex-wrap items-center gap-3">
+                <select x-model="method" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-wimbledon-green bg-white">
+                    <option value="Zelle">Zelle</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Venmo">Venmo</option>
+                    <option value="Refund">Refund</option>
+                </select>
+                <input type="date" x-model="date" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-wimbledon-green">
+                <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+                    <input type="checkbox" :checked="allSelected" @change="toggleAll($event.target.checked)" class="rounded border-gray-300 text-wimbledon-green cursor-pointer w-4 h-4">
+                    <span>Select All</span>
+                </label>
+                <button @click="recordPayments()" :disabled="loading || selectedCount === 0"
+                    class="px-4 py-2 bg-wimbledon-green text-white rounded-lg text-sm font-medium hover:bg-wimbledon-green/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2">
+                    <svg x-show="loading" class="animate-spin w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    <span x-text="loading ? 'Recording...' : 'Record Payments (' + selectedCount + ')'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full">
+            <thead>
+                <tr class="bg-wimbledon-cream border-b border-wimbledon-gold/20">
+                    <th class="px-4 py-3 w-10"></th>
+                    <th class="px-4 py-3 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Player</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Balance Owed</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold text-wimbledon-purple uppercase tracking-wider">Amount to Record</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-wimbledon-gold/10">
+                {% for player, balance in outstanding_balances %}
+                <tr class="hover:bg-wimbledon-cream/50 transition-all" :class="{ 'opacity-50': !selected[{{ player.id }}] }">
+                    <td class="px-4 py-3 text-center">
+                        <input type="checkbox" x-model="selected[{{ player.id }}]" class="rounded border-gray-300 text-wimbledon-green w-4 h-4 cursor-pointer">
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap">
+                        <div class="flex items-center gap-3">
+                            {% if player.profile_photo %}
+                            <img src="{{ url_for('static', filename='uploads/' + player.profile_photo) }}" alt="" class="w-8 h-8 rounded-full object-cover border border-wimbledon-gold/30">
+                            {% else %}
+                            <div class="w-8 h-8 gradient-primary rounded-full flex items-center justify-center text-white text-xs font-bold border border-wimbledon-gold/30">{{ player.name[0].upper() }}</div>
+                            {% endif %}
+                            <div>
+                                <span class="font-medium text-gray-800">{{ player.name }}</span>
+                                <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-wimbledon-cream text-wimbledon-purple border border-wimbledon-gold/20">{{ player.category }}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-right">
+                        <span class="font-bold text-wimbledon-purple">${{ "%.2f"|format(balance) }}</span>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-right">
+                        <input type="number" step="0.01" min="0" x-model="amounts[{{ player.id }}]"
+                            class="w-28 px-2 py-1 text-sm text-right border border-gray-300 rounded-lg focus:outline-none focus:border-wimbledon-green">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="bg-wimbledon-cream/50 border-t border-wimbledon-gold/20">
+                <tr>
+                    <td colspan="2" class="px-4 py-3 text-sm font-bold text-gray-600">
+                        <span x-text="selectedCount + ' of {{ outstanding_balances|length }} players selected'"></span>
+                    </td>
+                    <td class="px-4 py-3 text-right text-sm font-bold text-wimbledon-purple">
+                        ${{ "%.2f"|format(outstanding_balances|sum(attribute='1')) }}
+                    </td>
+                    <td class="px-4 py-3 text-right text-sm font-bold text-wimbledon-green">
+                        $<span x-text="Object.entries(selected).filter(([,v])=>v).reduce((s,[id])=>s+(parseFloat(amounts[id])||0),0).toFixed(2)"></span>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+{% endif %}
+
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
     <!-- Outstanding Balances -->
     <div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 overflow-hidden">
@@ -155,4 +246,64 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function bulkPaymentGlobal() {
+    const selected = {
+        {% for player, balance in outstanding_balances %}{{ player.id }}: true,
+        {% endfor %}
+    };
+    const amounts = {
+        {% for player, balance in outstanding_balances %}{{ player.id }}: {{ "%.2f"|format(balance) }},
+        {% endfor %}
+    };
+    return {
+        selected,
+        amounts,
+        method: 'Zelle',
+        date: new Date().toISOString().split('T')[0],
+        loading: false,
+        get selectedCount() {
+            return Object.values(this.selected).filter(Boolean).length;
+        },
+        get allSelected() {
+            const keys = Object.keys(this.selected);
+            return keys.length > 0 && keys.every(k => this.selected[k]);
+        },
+        toggleAll(val) {
+            Object.keys(this.selected).forEach(k => { this.selected[k] = val; });
+        },
+        async recordPayments() {
+            const payments = Object.entries(this.selected)
+                .filter(([, checked]) => checked)
+                .map(([id]) => ({ player_id: parseInt(id), amount: parseFloat(this.amounts[id]) || 0 }))
+                .filter(p => p.amount > 0);
+            if (payments.length === 0) {
+                alert('No players selected or all amounts are zero');
+                return;
+            }
+            this.loading = true;
+            try {
+                const res = await fetch('/api/bulk-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payments, method: this.method, date: this.date })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                    this.loading = false;
+                }
+            } catch (e) {
+                alert('Failed to record payments');
+                this.loading = false;
+            }
+        }
+    };
+}
+</script>
 {% endblock %}
