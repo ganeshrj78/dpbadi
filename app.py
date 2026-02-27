@@ -378,6 +378,8 @@ def dashboard():
 
         m_sessions = [s for s in all_sessions_for_summary
                       if month_start <= s.date < month_end]
+        # Month is "active" if it has at least one non-archived session
+        is_active_month = any(not s.is_archived for s in m_sessions)
 
         m_charges = 0
         m_attendees = 0
@@ -401,6 +403,7 @@ def dashboard():
 
         monthly_summary.append({
             'month': month_start.strftime('%b %Y'),
+            'is_active': is_active_month,
             'sessions': len(m_sessions),
             'attendees': m_attendees,
             'charges': round(m_charges, 2),
@@ -408,11 +411,10 @@ def dashboard():
             'outstanding': round(m_charges - m_collected, 2),
         })
 
-    # Top cards: aggregate from the same 6 active months
-    total_collected = round(sum(r['collected'] for r in monthly_summary), 2)
-    total_outstanding = round(sum(r['outstanding'] for r in monthly_summary), 2)
-    total_charges = round(sum(r['charges'] for r in monthly_summary), 2)
-    active_sessions_all = [s for s in all_sessions_for_summary if not s.is_archived]
+    # Top cards: aggregate from active months only
+    total_collected = round(sum(r['collected'] for r in monthly_summary if r['is_active']), 2)
+    total_outstanding = round(sum(r['outstanding'] for r in monthly_summary if r['is_active']), 2)
+    total_charges = round(sum(r['charges'] for r in monthly_summary if r['is_active']), 2)
 
     # Pending approvals
     pending_approvals = Player.query.filter_by(is_approved=False).order_by(Player.created_at.desc()).all()

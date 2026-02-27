@@ -187,8 +187,17 @@
             </thead>
             <tbody class="divide-y divide-wimbledon-gold/10">
                 {% for row in monthly_summary %}
-                <tr class="hover:bg-wimbledon-cream/30 transition-colors {% if loop.last %}font-semibold bg-wimbledon-purple/5{% endif %}">
-                    <td class="px-6 py-3 text-gray-800">{{ row.month }}</td>
+                <tr class="hover:bg-wimbledon-cream/30 transition-colors {% if not row.is_active %}opacity-60{% endif %}">
+                    <td class="px-6 py-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-gray-800 font-medium">{{ row.month }}</span>
+                            {% if row.is_active %}
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">Active</span>
+                            {% else %}
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500">Archived</span>
+                            {% endif %}
+                        </div>
+                    </td>
                     <td class="px-4 py-3 text-center">
                         {% if row.sessions > 0 %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-wimbledon-green/10 text-wimbledon-green border border-wimbledon-green/20">
