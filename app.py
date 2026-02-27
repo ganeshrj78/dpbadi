@@ -384,19 +384,19 @@ def dashboard():
     total_outstanding = round(total_charges - total_collected, 2)
     total_collected = round(total_collected, 2)
 
-    # Monthly summary: last 6 months that have active sessions, descending
-    # Find unique (year, month) pairs from active sessions
+    # Monthly summary: last 6 months that have any session (archived or not), descending
+    all_sessions_for_summary = Session.query.all()
     session_months = sorted(
-        {(s.date.year, s.date.month) for s in active_sessions_all},
+        {(s.date.year, s.date.month) for s in all_sessions_for_summary},
         reverse=True
-    )[:6]  # most recent 6 months with sessions
+    )[:6]
 
     monthly_summary = []
     for year, month in session_months:
         month_start = date(year, month, 1)
         month_end = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
 
-        m_sessions = [s for s in active_sessions_all
+        m_sessions = [s for s in all_sessions_for_summary
                       if month_start <= s.date < month_end]
 
         m_charges = 0
