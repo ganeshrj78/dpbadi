@@ -176,6 +176,11 @@
                 class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all">
                 Unpaid
             </button>
+            <button @click="paymentFilter = 'not_participating'"
+                :class="paymentFilter === 'not_participating' ? 'bg-gray-500 text-white' : 'bg-white text-gray-600 border border-gray-300'"
+                class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all">
+                Not Participating
+            </button>
         </div>
     </div>
     <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
@@ -203,7 +208,7 @@
                                 <div class="flex items-center gap-1 mt-1">
                                     <span class="text-[10px] font-bold text-wimbledon-green">{{ session.get_attendee_count() }}</span>
                                     <span class="text-[10px] text-gray-400">|</span>
-                                    <span class="text-[10px] text-gray-500">${{ "%.0f"|format(session.get_cost_per_player()) }}</span>
+                                    <span class="text-[10px] text-gray-500">${{ "%.0f"|format(session.get_cost_per_player() or session.birdie_cost) }}</span>
                                 </div>
                                 <input type="checkbox" value="{{ session.id }}"
                                     @change="$event.target.checked ? selectedSessions.push({{ session.id }}) : selectedSessions = selectedSessions.filter(id => id !== {{ session.id }})"
@@ -239,7 +244,7 @@
                 {% set stats = player_stats[player.id] %}
                 {% set ns_np = namespace(all_no=true) %}{% for sess in active_sessions %}{% set _s = attendance_map.get(sess.id, {}).get(player.id, '') %}{% if _s and _s != 'NO' %}{% set ns_np.all_no = false %}{% endif %}{% endfor %}
                 <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all"
-                    x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ stats.balance }} <= 0) || (paymentFilter === 'unpaid' && {{ stats.balance }} > 0))">
+                    x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ stats.balance }} <= 0 && {{ 'false' if (ns_np.all_no and active_sessions) else 'true' }}) || (paymentFilter === 'unpaid' && {{ stats.balance }} > 0) || (paymentFilter === 'not_participating' && {{ 'true' if (ns_np.all_no and active_sessions) else 'false' }}))">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
                         <div class="flex items-center space-x-2">
                             <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
@@ -359,7 +364,7 @@
                 {% set stats = player_stats[player.id] %}
                 {% set ns_np = namespace(all_no=true) %}{% for sess in active_sessions %}{% set _s = attendance_map.get(sess.id, {}).get(player.id, '') %}{% if _s and _s != 'NO' %}{% set ns_np.all_no = false %}{% endif %}{% endfor %}
                 <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all"
-                    x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ stats.balance }} <= 0) || (paymentFilter === 'unpaid' && {{ stats.balance }} > 0))">
+                    x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ stats.balance }} <= 0 && {{ 'false' if (ns_np.all_no and active_sessions) else 'true' }}) || (paymentFilter === 'unpaid' && {{ stats.balance }} > 0) || (paymentFilter === 'not_participating' && {{ 'true' if (ns_np.all_no and active_sessions) else 'false' }}))">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
                         <div class="flex items-center space-x-2">
                             <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
@@ -479,7 +484,7 @@
                 {% set stats = player_stats[player.id] %}
                 {% set ns_np = namespace(all_no=true) %}{% for sess in active_sessions %}{% set _s = attendance_map.get(sess.id, {}).get(player.id, '') %}{% if _s and _s != 'NO' %}{% set ns_np.all_no = false %}{% endif %}{% endfor %}
                 <tr class="border-b border-gray-100 hover:bg-gray-50 transition-all"
-                    x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ stats.balance }} <= 0) || (paymentFilter === 'unpaid' && {{ stats.balance }} > 0))">
+                    x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ stats.balance }} <= 0 && {{ 'false' if (ns_np.all_no and active_sessions) else 'true' }}) || (paymentFilter === 'unpaid' && {{ stats.balance }} > 0) || (paymentFilter === 'not_participating' && {{ 'true' if (ns_np.all_no and active_sessions) else 'false' }}))">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
                         <div class="flex items-center space-x-2">
                             <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
