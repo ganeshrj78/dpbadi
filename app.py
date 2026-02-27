@@ -411,10 +411,13 @@ def dashboard():
             'outstanding': round(m_charges - m_collected, 2),
         })
 
-    # Top cards: aggregate from active months only
+    # Top cards:
+    # - Collected: sum of payments in active months (cash-flow view)
+    # - Outstanding: true per-player balance (same method as payments page)
     total_collected = round(sum(r['collected'] for r in monthly_summary if r['is_active']), 2)
-    total_outstanding = round(sum(r['outstanding'] for r in monthly_summary if r['is_active']), 2)
     total_charges = round(sum(r['charges'] for r in monthly_summary if r['is_active']), 2)
+    active_players = Player.query.filter_by(is_approved=True, is_active=True).all()
+    total_outstanding = round(sum(p.get_balance() for p in active_players if p.get_balance() > 0), 2)
 
     # Pending approvals
     pending_approvals = Player.query.filter_by(is_approved=False).order_by(Player.created_at.desc()).all()
