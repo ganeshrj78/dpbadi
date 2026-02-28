@@ -1875,6 +1875,51 @@ def update_attendance_comments():
     return jsonify({'error': 'Attendance record not found'}), 404
 
 
+@app.route('/api/bulk-attendance', methods=['POST'])
+@csrf.exempt
+@admin_required
+def bulk_attendance():
+    """Set attendance (YES or NO) for multiple players across multiple sessions."""
+    data = request.get_json()
+    player_ids = data.get('player_ids', [])
+    session_ids = data.get('session_ids', [])  # empty = all active sessions
+    status = data.get('status', 'YES')
+
+    if status not in ('YES', 'NO'):
+        return jsonify({'error': 'Invalid status'}), 400
+    if not player_ids:
+        return jsonify({'error': 'No players selected'}), 400
+
+    if not session_ids:
+        session_ids = [s.id for s in Session.query.filter_by(is_archived=False).all()]
+
+    count = 0
+    for session_id in session_ids:
+        sess = Session.query.get(session_id)
+        if not sess:
+            continue
+        for player_id in player_ids:
+            player = Player.query.get(player_id)
+            if not player:
+                continue
+            att = Attendance.query.filter_by(session_id=session_id, player_id=player_id).first()
+            if att:
+                att.status = status
+            else:
+                att = Attendance(
+                    session_id=session_id,
+                    player_id=player_id,
+                    status=status,
+                    category=player.category
+                )
+                db.session.add(att)
+            count += 1
+
+    db.session.commit()
+    cache.clear()
+    return jsonify({'success': True, 'updated': count})
+
+
 @app.route('/api/bulk-session-payment', methods=['POST'])
 @csrf.exempt
 @admin_required
