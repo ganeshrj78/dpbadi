@@ -99,6 +99,14 @@ def upgrade():
     if 'updated_at' not in att_cols:
         op.execute("ALTER TABLE attendances ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
 
+    # ── attendances composite index ───────────────────────────────────────────
+    existing_indexes = {idx['name'] for idx in inspector.get_indexes('attendances')}
+    if 'idx_attendance_session_status_cat' not in existing_indexes:
+        op.execute(
+            "CREATE INDEX idx_attendance_session_status_cat "
+            "ON attendances (session_id, status, category)"
+        )
+
     # ── courts ────────────────────────────────────────────────────────────────
     court_cols = {c['name'] for c in inspector.get_columns('courts')}
     if 'name' not in court_cols:

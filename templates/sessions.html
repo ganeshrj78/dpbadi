@@ -634,26 +634,38 @@
 <!-- JavaScript for attendance management -->
 <script>
 function bulkSetAttendance(playerId, status) {
-    // Get selected sessions from Alpine, fall back to all active sessions
-    const alpineEl = document.querySelector('[x-data]');
-    const selectedSessions = alpineEl ? Alpine.$data(alpineEl).selectedSessions : [];
-    const sessionIds = selectedSessions.length > 0 ? selectedSessions :
-        [{% for s in active_sessions %}{{ s.id }},{% endfor %}];
-    const label = selectedSessions.length > 0
-        ? selectedSessions.length + ' session(s)'
-        : 'all sessions';
-    if (!confirm('Set ' + status + ' for this player across ' + label + '?')) return;
+    // Read selected sessions from checked checkboxes in session header (th elements)
+    const checkedBoxes = document.querySelectorAll('th input[type="checkbox"]:checked');
+    const selectedSessions = Array.from(checkedBoxes)
+        .map(cb => parseInt(cb.value))
+        .filter(v => !isNaN(v));
+
+    const allSessionIds = [{% for s in active_sessions %}{{ s.id }},{% endfor %}];
+    const sessionIds = selectedSessions.length > 0 ? selectedSessions : allSessionIds;
+
+    if (sessionIds.length === 0) {
+        alert('No active sessions to update.');
+        return;
+    }
+
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
     fetch('/api/bulk-attendance-players', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('meta[name=csrf-token]').content
+            'X-CSRFToken': csrfMeta ? csrfMeta.content : ''
         },
         body: JSON.stringify({ player_ids: [playerId], session_ids: sessionIds, status: status })
-    }).then(r => r.json()).then(d => {
+    })
+    .then(r => {
+        if (!r.ok) throw new Error('Server error ' + r.status);
+        return r.json();
+    })
+    .then(d => {
         if (d.success) location.reload();
         else alert(d.error || 'Error updating attendance');
-    });
+    })
+    .catch(err => alert('Request failed: ' + err.message));
 }
 
 // Track pending changes: Map of "sessionId-playerId" -> {sessionId, playerId, status, originalStatus}

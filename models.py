@@ -373,6 +373,7 @@ class Attendance(db.Model):
     __table_args__ = (
         db.UniqueConstraint('player_id', 'session_id', name='unique_player_session'),
         db.Index('idx_attendance_status_category', 'status', 'category'),
+        db.Index('idx_attendance_session_status_cat', 'session_id', 'status', 'category'),
     )
 
     def get_session_cost(self):
