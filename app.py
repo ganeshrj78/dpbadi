@@ -1875,11 +1875,11 @@ def update_attendance_comments():
     return jsonify({'error': 'Attendance record not found'}), 404
 
 
-@app.route('/api/bulk-attendance', methods=['POST'])
+@app.route('/api/bulk-attendance-players', methods=['POST'])
 @csrf.exempt
 @admin_required
-def bulk_attendance():
-    """Set attendance (YES or NO) for multiple players across multiple sessions."""
+def bulk_attendance_players():
+    """Set attendance (YES or NO) for specific player IDs across multiple sessions."""
     data = request.get_json()
     player_ids = data.get('player_ids', [])
     session_ids = data.get('session_ids', [])  # empty = all active sessions
