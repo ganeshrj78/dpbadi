@@ -100,7 +100,7 @@
 </div>
 
 <!-- Active Sessions - Attendance Matrix -->
-<div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 overflow-hidden mb-8" x-data="{ selectedSessions: [], selectedPlayers: [], paymentFilter: 'all', searchQuery: '', bulkLoading: false, togglePlayer(id) { if (this.selectedPlayers.includes(id)) { this.selectedPlayers = this.selectedPlayers.filter(p => p !== id); } else { this.selectedPlayers.push(id); } } }">
+<div class="bg-white rounded-2xl shadow-lg border border-wimbledon-gold/20 overflow-hidden mb-8" x-data="{ selectedSessions: [], paymentFilter: 'all', searchQuery: '' }">
     <div class="px-6 py-4 border-b border-wimbledon-gold/20 bg-gradient-to-r from-wimbledon-cream to-white flex items-center justify-between">
         <h2 class="text-lg font-serif font-bold text-wimbledon-purple flex items-center">
             <svg class="w-5 h-5 mr-2 text-wimbledon-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,24 +108,6 @@
             </svg>
             Active Sessions
         </h2>
-        <!-- Bulk Attendance (players selected) -->
-        <div x-show="selectedPlayers.length > 0" x-cloak class="flex items-center gap-2">
-            <span class="text-sm text-gray-600" x-text="selectedPlayers.length + ' player(s)'"></span>
-            <span class="text-gray-400 text-xs" x-text="selectedSessions.length > 0 ? '× ' + selectedSessions.length + ' session(s)' : '× all sessions'"></span>
-            <button @click="bulkLoading=true; fetch('/api/bulk-attendance-players', { method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':document.querySelector('meta[name=csrf-token]').content}, body:JSON.stringify({player_ids:selectedPlayers, session_ids:selectedSessions, status:'YES'}) }).then(r=>r.json()).then(d=>{ bulkLoading=false; if(d.success) location.reload(); else alert(d.error||'Error'); }).catch(()=>bulkLoading=false)"
-                :disabled="bulkLoading"
-                class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition-all flex items-center gap-1.5 disabled:opacity-60">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                Set YES
-            </button>
-            <button @click="bulkLoading=true; fetch('/api/bulk-attendance-players', { method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':document.querySelector('meta[name=csrf-token]').content}, body:JSON.stringify({player_ids:selectedPlayers, session_ids:selectedSessions, status:'NO'}) }).then(r=>r.json()).then(d=>{ bulkLoading=false; if(d.success) location.reload(); else alert(d.error||'Error'); }).catch(()=>bulkLoading=false)"
-                :disabled="bulkLoading"
-                class="px-4 py-2 bg-gray-500 text-white rounded-lg text-sm font-semibold hover:bg-gray-600 transition-all flex items-center gap-1.5 disabled:opacity-60">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                Set NO
-            </button>
-            <button @click="selectedPlayers = []" class="px-3 py-2 text-gray-500 hover:text-gray-700 text-sm">Clear</button>
-        </div>
         <div x-show="selectedSessions.length > 0" x-cloak class="flex items-center gap-3">
             <span class="text-sm text-gray-600" x-text="selectedSessions.length + ' selected'"></span>
             <form method="POST" action="{{ url_for('bulk_freeze_voting') }}" class="inline">
@@ -206,13 +188,7 @@
             <thead class="sticky top-0 z-20">
                 <tr class="bg-gradient-to-r from-wimbledon-cream to-white border-b border-wimbledon-gold/20">
                     <th class="px-4 py-3 text-left text-xs font-bold text-wimbledon-purple uppercase tracking-wider sticky left-0 bg-wimbledon-cream z-30 min-w-[220px]">
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" title="Select all visible players"
-                                @change="$event.target.checked ? (selectedPlayers = [{% for p in regular_players %}{{ p.id }},{% endfor %}{% for p in adhoc_players %}{{ p.id }},{% endfor %}{% for p in kid_players %}{{ p.id }},{% endfor %}]) : (selectedPlayers = [])"
-                                :checked="selectedPlayers.length > 0"
-                                class="w-3.5 h-3.5 rounded border-gray-400 text-wimbledon-purple focus:ring-wimbledon-purple cursor-pointer">
-                            <span>Player</span>
-                        </div>
+                        Player
                     </th>
                     {% for session in active_sessions %}
                     <th class="px-2 py-3 text-center min-w-[80px]">
@@ -271,8 +247,6 @@
                     x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ stats.balance }} <= 0 && {{ 'false' if (ns_np.all_no and active_sessions) else 'true' }}) || (paymentFilter === 'unpaid' && {{ stats.balance }} > 0) || (paymentFilter === 'not_participating' && {{ 'true' if (ns_np.all_no and active_sessions) else 'false' }}))">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
                         <div class="flex items-center space-x-2">
-                            <input type="checkbox" @change="togglePlayer({{ player.id }})" :checked="selectedPlayers.includes({{ player.id }})"
-                                class="w-3.5 h-3.5 rounded border-gray-400 text-wimbledon-purple focus:ring-wimbledon-purple cursor-pointer flex-shrink-0">
                             <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
                                 {% if player.profile_photo %}
                                 <img src="{{ url_for('static', filename='uploads/' + player.profile_photo) }}" alt="" class="w-8 h-8 rounded-full object-cover border border-wimbledon-gold/30">
@@ -283,6 +257,14 @@
                                 {% endif %}
                                 <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
                             </a>
+                            <div class="flex gap-1 ml-1">
+                                <button title="Set YES for selected sessions"
+                                    onclick="bulkSetAttendance({{ player.id }}, 'YES')"
+                                    class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-green-100 text-green-700 hover:bg-green-600 hover:text-white transition-all border border-green-300">Y</button>
+                                <button title="Set NO for selected sessions"
+                                    onclick="bulkSetAttendance({{ player.id }}, 'NO')"
+                                    class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-gray-100 text-gray-500 hover:bg-gray-500 hover:text-white transition-all border border-gray-300">N</button>
+                            </div>
                         </div>
                     </td>
                     {% for session in active_sessions %}
@@ -393,8 +375,6 @@
                     x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ stats.balance }} <= 0 && {{ 'false' if (ns_np.all_no and active_sessions) else 'true' }}) || (paymentFilter === 'unpaid' && {{ stats.balance }} > 0) || (paymentFilter === 'not_participating' && {{ 'true' if (ns_np.all_no and active_sessions) else 'false' }}))">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
                         <div class="flex items-center space-x-2">
-                            <input type="checkbox" @change="togglePlayer({{ player.id }})" :checked="selectedPlayers.includes({{ player.id }})"
-                                class="w-3.5 h-3.5 rounded border-gray-400 text-wimbledon-purple focus:ring-wimbledon-purple cursor-pointer flex-shrink-0">
                             <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
                                 {% if player.profile_photo %}
                                 <img src="{{ url_for('static', filename='uploads/' + player.profile_photo) }}" alt="" class="w-8 h-8 rounded-full object-cover border border-wimbledon-gold/30">
@@ -405,6 +385,14 @@
                                 {% endif %}
                                 <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
                             </a>
+                            <div class="flex gap-1 ml-1">
+                                <button title="Set YES for selected sessions"
+                                    onclick="bulkSetAttendance({{ player.id }}, 'YES')"
+                                    class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-green-100 text-green-700 hover:bg-green-600 hover:text-white transition-all border border-green-300">Y</button>
+                                <button title="Set NO for selected sessions"
+                                    onclick="bulkSetAttendance({{ player.id }}, 'NO')"
+                                    class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-gray-100 text-gray-500 hover:bg-gray-500 hover:text-white transition-all border border-gray-300">N</button>
+                            </div>
                         </div>
                     </td>
                     {% for session in active_sessions %}
@@ -515,8 +503,6 @@
                     x-show="(searchQuery === '' || '{{ player.name|lower }}'.includes(searchQuery.toLowerCase())) && (paymentFilter === 'all' || (paymentFilter === 'paid' && {{ stats.balance }} <= 0 && {{ 'false' if (ns_np.all_no and active_sessions) else 'true' }}) || (paymentFilter === 'unpaid' && {{ stats.balance }} > 0) || (paymentFilter === 'not_participating' && {{ 'true' if (ns_np.all_no and active_sessions) else 'false' }}))">
                     <td class="px-4 py-2 whitespace-nowrap sticky left-0 bg-white z-10">
                         <div class="flex items-center space-x-2">
-                            <input type="checkbox" @change="togglePlayer({{ player.id }})" :checked="selectedPlayers.includes({{ player.id }})"
-                                class="w-3.5 h-3.5 rounded border-gray-400 text-wimbledon-purple focus:ring-wimbledon-purple cursor-pointer flex-shrink-0">
                             <a href="{{ url_for('player_detail', id=player.id) }}" class="flex items-center space-x-2 hover:text-wimbledon-purple">
                                 {% if player.profile_photo %}
                                 <img src="{{ url_for('static', filename='uploads/' + player.profile_photo) }}" alt="" class="w-8 h-8 rounded-full object-cover border border-wimbledon-gold/30">
@@ -527,6 +513,14 @@
                                 {% endif %}
                                 <span class="font-medium text-sm text-gray-800">{{ player.name }}</span>
                             </a>
+                            <div class="flex gap-1 ml-1">
+                                <button title="Set YES for selected sessions"
+                                    onclick="bulkSetAttendance({{ player.id }}, 'YES')"
+                                    class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-green-100 text-green-700 hover:bg-green-600 hover:text-white transition-all border border-green-300">Y</button>
+                                <button title="Set NO for selected sessions"
+                                    onclick="bulkSetAttendance({{ player.id }}, 'NO')"
+                                    class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-gray-100 text-gray-500 hover:bg-gray-500 hover:text-white transition-all border border-gray-300">N</button>
+                            </div>
                         </div>
                     </td>
                     {% for session in active_sessions %}
@@ -639,6 +633,29 @@
 
 <!-- JavaScript for attendance management -->
 <script>
+function bulkSetAttendance(playerId, status) {
+    // Get selected sessions from Alpine, fall back to all active sessions
+    const alpineEl = document.querySelector('[x-data]');
+    const selectedSessions = alpineEl ? Alpine.$data(alpineEl).selectedSessions : [];
+    const sessionIds = selectedSessions.length > 0 ? selectedSessions :
+        [{% for s in active_sessions %}{{ s.id }},{% endfor %}];
+    const label = selectedSessions.length > 0
+        ? selectedSessions.length + ' session(s)'
+        : 'all sessions';
+    if (!confirm('Set ' + status + ' for this player across ' + label + '?')) return;
+    fetch('/api/bulk-attendance-players', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name=csrf-token]').content
+        },
+        body: JSON.stringify({ player_ids: [playerId], session_ids: sessionIds, status: status })
+    }).then(r => r.json()).then(d => {
+        if (d.success) location.reload();
+        else alert(d.error || 'Error updating attendance');
+    });
+}
+
 // Track pending changes: Map of "sessionId-playerId" -> {sessionId, playerId, status, originalStatus}
 const pendingChanges = new Map();
 
